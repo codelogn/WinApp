@@ -1,0 +1,50 @@
+# Ignore build outputs
+bin/
+obj/
+WindowsTaskbarApp/bin/
+WindowsTaskbarApp/obj/
+*.exe
+*.dll
+*.pdb
+
+# Ignore user-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Ignore Visual Studio Code settings
+.vscode/
+
+# Ignore NuGet packages
+*.nupkg
+packages/
+.nuget/
+
+# Ignore WebView2 cache
+WebView2/
+WindowsTaskbarApp/WebView2/
+
+# Ignore logs and temporary files
+*.log
+*.tmp
+*.temp
+*.cache
+
+# Ignore compiled files
+*.csproj.user
+*.csproj.nuget.g.props
+*.csproj.nuget.g.targets
+WindowsTaskbarApp/*.csproj.user
+WindowsTaskbarApp/*.csproj.nuget.g.props
+WindowsTaskbarApp/*.csproj.nuget.g.targets
+
+# Ignore publish outputs
+publish/
+out/
+WindowsTaskbarApp/publish/
+WindowsTaskbarApp/out/
+
+# Ignore IDE-specific files
+.idea/
+.vs/
