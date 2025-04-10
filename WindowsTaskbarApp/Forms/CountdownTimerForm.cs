@@ -1,7 +1,5 @@
 using System;
 using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Drawing.Text;
 using System.Windows.Forms;
 
 namespace WindowsTaskbarApp.Forms
@@ -9,7 +7,6 @@ namespace WindowsTaskbarApp.Forms
     public partial class CountdownTimerForm : Form
     {
         private NumericUpDown numericMinutes;
-        private Button startButton;
         private Timer countdownTimer;
         private NotifyIcon notifyIcon;
         private int remainingTime;
@@ -18,35 +15,39 @@ namespace WindowsTaskbarApp.Forms
         public CountdownTimerForm()
         {
             this.Text = "Countdown Timer";
-            this.Size = new Size(300, 150);
+            this.Size = new Size(300, 200);
+
+            // Create MenuStrip
+            var menuStrip = new MenuStrip();
+            var toolsMenu = new ToolStripMenuItem("Tools");
+
+            // Add "Start Timer" menu item
+            var startTimerMenuItem = new ToolStripMenuItem("Start Timer");
+            startTimerMenuItem.Click += StartTimerMenuItem_Click;
+            toolsMenu.DropDownItems.Add(startTimerMenuItem);
+
+            // Add Tools menu to the MenuStrip
+            menuStrip.Items.Add(toolsMenu);
+            this.MainMenuStrip = menuStrip;
+            this.Controls.Add(menuStrip);
 
             // Create numeric input for minutes
             var label = new Label
             {
                 Text = "Minutes:",
-                Location = new Point(20, 20),
+                Location = new Point(20, 50),
                 AutoSize = true
             };
             this.Controls.Add(label);
 
             numericMinutes = new NumericUpDown
             {
-                Location = new Point(100, 20),
+                Location = new Point(100, 50),
                 Minimum = 1,
                 Maximum = 1440, // Max 24 hours
                 Value = 1
             };
             this.Controls.Add(numericMinutes);
-
-            // Create Start button
-            startButton = new Button
-            {
-                Text = "Start",
-                Location = new Point(100, 60),
-                AutoSize = true
-            };
-            startButton.Click += StartButton_Click;
-            this.Controls.Add(startButton);
 
             // Initialize Timer
             countdownTimer = new Timer
@@ -65,11 +66,10 @@ namespace WindowsTaskbarApp.Forms
             overlayForm = new CountdownOverlayForm();
         }
 
-        private void StartButton_Click(object sender, EventArgs e)
+        private void StartTimerMenuItem_Click(object sender, EventArgs e)
         {
             remainingTime = (int)numericMinutes.Value * 60; // Convert minutes to seconds
             countdownTimer.Start();
-            startButton.Enabled = false;
 
             // Set a random background color for the overlay form
             overlayForm.SetRandomBackgroundColor();
@@ -94,43 +94,8 @@ namespace WindowsTaskbarApp.Forms
             if (remainingTime <= 0)
             {
                 countdownTimer.Stop();
-                startButton.Enabled = true;
-
-                // Hide the overlay form
                 overlayForm.Hide();
-
-                // Show Windows notification
-                notifyIcon.BalloonTipTitle = "Countdown Timer";
-                notifyIcon.BalloonTipText = "Time's up!";
-                notifyIcon.ShowBalloonTip(3000);
-
-                // Dispose NotifyIcon after showing the notification
-                notifyIcon.BalloonTipClosed += (s, args) => notifyIcon.Dispose();
-                notifyIcon.BalloonTipClicked += (s, args) => notifyIcon.Dispose();
-            }
-        }
-
-        private void UpdateNotifyIcon(int minutes)
-        {
-            // Create a bitmap to display the remaining minutes
-            using (var bitmap = new Bitmap(32, 32))
-            using (var graphics = Graphics.FromImage(bitmap))
-            {
-                graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-                graphics.Clear(Color.Transparent);
-
-                // Draw the remaining minutes as text
-                using (var font = new Font("Arial", 16, FontStyle.Bold, GraphicsUnit.Pixel))
-                using (var brush = new SolidBrush(Color.Black))
-                {
-                    var text = minutes.ToString();
-                    var textSize = graphics.MeasureString(text, font);
-                    graphics.DrawString(text, font, brush, (bitmap.Width - textSize.Width) / 2, (bitmap.Height - textSize.Height) / 2);
-                }
-
-                // Update the NotifyIcon with the new bitmap
-                notifyIcon.Icon = Icon.FromHandle(bitmap.GetHicon());
+                MessageBox.Show("Countdown finished!", "Info");
             }
         }
     }

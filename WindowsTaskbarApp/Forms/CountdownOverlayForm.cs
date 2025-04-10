@@ -9,22 +9,20 @@ namespace WindowsTaskbarApp.Forms
         private string countdownText = "00:00";
         private bool isDragging = false;
         private Point dragStartPoint;
-        private Timer flashTimer;
         private bool isFlashing = false;
-        private Random random;
+        private Timer flashTimer;
+        private int flashColorIndex = 0; // Index to track the current color
+        private readonly Color[] flashColors = { Color.Blue, Color.Yellow, Color.Red }; // Colors to cycle through
 
         public CountdownOverlayForm()
         {
             this.Text = "Countdown Overlay";
-            this.Size = new Size(150, 80); // Slightly smaller size
+            this.Size = new Size((int)(150 * 0.65), (int)(80 * 0.65)); // Reduce size by 35%
             this.FormBorderStyle = FormBorderStyle.None;
             this.StartPosition = FormStartPosition.Manual; // Allow manual positioning
             this.TopMost = true;
             this.BackColor = Color.Black;
-            this.Opacity = 0.5;
-
-            // Initialize random generator
-            random = new Random();
+            this.Opacity = 0.8;
 
             // Set the initial position near the bottom-right corner of the screen
             var screen = Screen.PrimaryScreen.WorkingArea;
@@ -33,7 +31,7 @@ namespace WindowsTaskbarApp.Forms
             // Initialize the flash timer
             flashTimer = new Timer
             {
-                Interval = 500 // Flash every 500ms (half a second)
+                Interval = 200 // Change color every 200ms for a quick flashing effect
             };
             flashTimer.Tick += FlashTimer_Tick;
 
@@ -64,20 +62,16 @@ namespace WindowsTaskbarApp.Forms
 
         public void SetRandomBackgroundColor()
         {
-            // Generate random RGB values
-            int r = random.Next(0, 256);
-            int g = random.Next(0, 256);
-            int b = random.Next(0, 256);
-
-            // Set the background color
-            this.BackColor = Color.FromArgb(r, g, b);
+            // Generate a random color
+            var random = new Random();
+            this.BackColor = Color.FromArgb(random.Next(256), random.Next(256), random.Next(256));
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
 
-            // Draw the countdown text with a black border
+            // Draw the countdown text
             using (var font = new Font("Arial", 24, FontStyle.Bold))
             {
                 var graphics = e.Graphics;
@@ -87,16 +81,7 @@ namespace WindowsTaskbarApp.Forms
                 var textX = (this.Width - textSize.Width) / 2;
                 var textY = (this.Height - textSize.Height) / 2;
 
-                // Draw the border by drawing the text multiple times with slight offsets
-                using (var brush = new SolidBrush(Color.Black))
-                {
-                    graphics.DrawString(countdownText, font, brush, textX - 1, textY - 1);
-                    graphics.DrawString(countdownText, font, brush, textX + 1, textY - 1);
-                    graphics.DrawString(countdownText, font, brush, textX - 1, textY + 1);
-                    graphics.DrawString(countdownText, font, brush, textX + 1, textY + 1);
-                }
-
-                // Draw the main text in white
+                // Draw the text in white
                 using (var brush = new SolidBrush(Color.White))
                 {
                     graphics.DrawString(countdownText, font, brush, textX, textY);
@@ -106,8 +91,9 @@ namespace WindowsTaskbarApp.Forms
 
         private void FlashTimer_Tick(object sender, EventArgs e)
         {
-            // Toggle the background color between black and red
-            this.BackColor = this.BackColor == Color.Black ? Color.Red : Color.Black;
+            // Cycle through the colors
+            this.BackColor = flashColors[flashColorIndex];
+            flashColorIndex = (flashColorIndex + 1) % flashColors.Length; // Move to the next color
         }
 
         private void CountdownOverlayForm_MouseDown(object sender, MouseEventArgs e)
