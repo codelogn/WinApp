@@ -31,6 +31,11 @@ namespace WindowsTaskbarApp.Forms
             helpMenu.DropDownItems.Add("About", null, ShowAbout);
             menuStrip.Items.Add(helpMenu);
 
+            // Add "Tools" menu
+            var toolsMenu = new ToolStripMenuItem("Tools");
+            toolsMenu.DropDownItems.Add("Countdown Timer", null, OpenCountdownTimerForm);
+            menuStrip.Items.Add(toolsMenu);
+
             // Add the MenuStrip to the form
             this.MainMenuStrip = menuStrip;
             this.Controls.Add(menuStrip);
@@ -59,6 +64,12 @@ namespace WindowsTaskbarApp.Forms
         {
             var textToSpeechForm = new TextToSpeechForm();
             textToSpeechForm.Show();
+        }
+
+        private void OpenCountdownTimerForm(object sender, EventArgs e)
+        {
+            var countdownTimerForm = new CountdownTimerForm();
+            countdownTimerForm.Show();
         }
 
         private void ShowAbout(object sender, EventArgs e)
