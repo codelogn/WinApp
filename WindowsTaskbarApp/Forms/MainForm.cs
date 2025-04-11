@@ -12,6 +12,10 @@ namespace WindowsTaskbarApp.Forms
         private Timer clockCountdownTimer;
         private CountdownOverlayForm overlayForm;
         private int remainingTime;
+        private Timer fullClockCountdownTimer;
+        private CountdownTimerBox countdownTimerBox;
+        private ClockCountdownBox clockCountdownBox;
+        private FullClockCountdownBox fullClockCountdownBox;
 
         public MainForm()
         {
@@ -42,6 +46,11 @@ namespace WindowsTaskbarApp.Forms
             var clockCountdownMenuItem = new ToolStripMenuItem("Clock Countdown");
             clockCountdownMenuItem.Click += ClockCountdownMenuItem_Click;
             toolsMenu.DropDownItems.Add(clockCountdownMenuItem);
+
+            // Add "Full Clock Countdown" menu item
+            var fullClockCountdownMenuItem = new ToolStripMenuItem("Full Clock Countdown");
+            fullClockCountdownMenuItem.Click += FullClockCountdownMenuItem_Click;
+            toolsMenu.DropDownItems.Add(fullClockCountdownMenuItem);
 
             menuStrip.Items.Add(toolsMenu);
 
@@ -87,8 +96,15 @@ namespace WindowsTaskbarApp.Forms
 
         private void OpenCountdownTimerForm(object sender, EventArgs e)
         {
-            var countdownTimerForm = new CountdownTimerForm();
-            countdownTimerForm.Show();
+            // Check if the box is null or disposed, and create a new instance if necessary
+            if (countdownTimerBox == null || countdownTimerBox.IsDisposed)
+            {
+                countdownTimerBox = new CountdownTimerBox();
+            }
+
+            // Show the box and start the countdown
+            countdownTimerBox.Show();
+            countdownTimerBox.StartCountdown(5, 0); // Example: Start a 5-minute countdown
         }
 
         private void ShowAbout(object sender, EventArgs e)
@@ -110,8 +126,9 @@ namespace WindowsTaskbarApp.Forms
 
         private void ClockCountdownMenuItem_Click(object sender, EventArgs e)
         {
-            clockCountdownTimer.Start();
-            MessageBox.Show("Clock Countdown started! Waiting for the next 2-minute mark.", "Info");
+            clockCountdownBox ??= new ClockCountdownBox();
+            clockCountdownBox.Show();
+            clockCountdownBox.StartCountdownToNextMark();
         }
 
         private void ClockCountdownTimer_Tick(object sender, EventArgs e)
@@ -180,6 +197,67 @@ namespace WindowsTaskbarApp.Forms
             overlayForm.UpdateCountdown(remainingTime / 60, remainingTime % 60);
 
             countdownTimer.Start();
+        }
+
+        private void StartFullClockCountdownOverlay()
+        {
+            overlayForm.SetRandomBackgroundColor();
+            overlayForm.Show();
+
+            // Initialize the timer for updating the countdown
+            if (fullClockCountdownTimer == null)
+            {
+                fullClockCountdownTimer = new Timer
+                {
+                    Interval = 1000 // 1 second
+                };
+                fullClockCountdownTimer.Tick += (s, e) => UpdateFullClockCountdownOverlay();
+            }
+
+            // Start the timer
+            fullClockCountdownTimer.Start();
+
+            // Add a button to stop and close the overlay
+            overlayForm.AddStopButton(() =>
+            {
+                fullClockCountdownTimer?.Stop();
+                overlayForm.Hide();
+            });
+        }
+
+        private void UpdateFullClockCountdownOverlay()
+        {
+            var now = DateTime.Now;
+
+            // Calculate remaining time for each interval
+            int secondsToNext1Min = 60 - now.Second;
+            int secondsToNext5Min = (5 - (now.Minute % 5)) * 60 - now.Second;
+            int secondsToNext15Min = (15 - (now.Minute % 15)) * 60 - now.Second;
+            int secondsToNext30Min = (30 - (now.Minute % 30)) * 60 - now.Second;
+            int secondsToNextHour = (60 - now.Minute) * 60 - now.Second;
+
+            // Update the overlay form with the calculated times
+            overlayForm.UpdateCountdownOverlay(new[]
+            {
+                ("1M", secondsToNext1Min),
+                ("5M", secondsToNext5Min),
+                ("15M", secondsToNext15Min),
+                ("30M", secondsToNext30Min),
+                ("1H", secondsToNextHour)
+            });
+        }
+
+        private void FullClockCountdownMenuItem_Click(object sender, EventArgs e)
+        {
+            // Check if the box is null or disposed, and create a new instance if necessary
+            if (fullClockCountdownBox == null || fullClockCountdownBox.IsDisposed)
+            {
+                fullClockCountdownBox = new FullClockCountdownBox();
+            }
+
+            // Show the box and start the countdown
+            fullClockCountdownBox.Show();
+            fullClockCountdownBox.StartCountdown();
         }
     }
 }
