@@ -1,99 +1,106 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace WindowsTaskbarApp.Forms
 {
     public partial class CountdownOverlayForm : Form
     {
-        private string countdownText = "00:00";
+        private Label countdownLabel;
+        private Button stopButton;
         private bool isDragging = false;
         private Point dragStartPoint;
-        private bool isFlashing = false;
-        private Timer flashTimer;
-        private int flashColorIndex = 0; // Index to track the current color
-        private readonly Color[] flashColors = { Color.Blue, Color.Yellow, Color.Red }; // Colors to cycle through
 
         public CountdownOverlayForm()
         {
-            this.Text = "Countdown Overlay";
-            this.Size = new Size((int)(150 * 0.65), (int)(80 * 0.65)); // Reduce size by 35%
+            // Configure the form
             this.FormBorderStyle = FormBorderStyle.None;
-            this.StartPosition = FormStartPosition.Manual; // Allow manual positioning
-            this.TopMost = true;
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.Size = new Size(300, 200); // Set an initial size for the form
             this.BackColor = Color.Black;
             this.Opacity = 0.8;
 
-            // Set the initial position near the bottom-right corner of the screen
-            var screen = Screen.PrimaryScreen.WorkingArea;
-            this.Location = new Point(screen.Width - this.Width - 20, screen.Height - this.Height - 20);
-
-            // Initialize the flash timer
-            flashTimer = new Timer
+            // Configure the countdown label
+            countdownLabel = new Label
             {
-                Interval = 200 // Change color every 200ms for a quick flashing effect
+                ForeColor = Color.White,
+                Font = new Font("Arial", 14, FontStyle.Bold),
+                AutoSize = true, // Enable auto-sizing for the label
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Top // Dock the label to the top
             };
-            flashTimer.Tick += FlashTimer_Tick;
+            this.Controls.Add(countdownLabel);
 
-            // Enable mouse events for dragging
-            this.MouseDown += CountdownOverlayForm_MouseDown;
-            this.MouseMove += CountdownOverlayForm_MouseMove;
-            this.MouseUp += CountdownOverlayForm_MouseUp;
+            // Configure the stop button
+            stopButton = new Button
+            {
+                Text = "Stop",
+                Dock = DockStyle.Bottom,
+                Height = 50
+            };
+            stopButton.Click += (s, e) => this.Hide();
+            this.Controls.Add(stopButton);
+
+            // Attach mouse events to the form and all child controls
+            AttachMouseEvents(this);
         }
 
-        public void UpdateCountdown(int minutes, int seconds)
+        private void AttachMouseEvents(Control control)
         {
-            countdownText = $"{minutes:D2}:{seconds:D2}";
-            this.Invalidate(); // Force repaint if needed
+            control.MouseDown += CountdownOverlayForm_MouseDown;
+            control.MouseMove += CountdownOverlayForm_MouseMove;
+            control.MouseUp += CountdownOverlayForm_MouseUp;
 
-            // Start flashing effect when less than 1 minute remains
-            if (minutes == 0 && !isFlashing)
+            // Recursively attach events to all child controls
+            foreach (Control child in control.Controls)
             {
-                isFlashing = true;
-                flashTimer.Start();
-            }
-            else if (minutes > 0 && isFlashing)
-            {
-                isFlashing = false;
-                flashTimer.Stop();
-                this.BackColor = Color.Black; // Reset background color
+                AttachMouseEvents(child);
             }
         }
 
         public void SetRandomBackgroundColor()
         {
-            // Generate a random color
-            var random = new Random();
+            Random random = new Random();
             this.BackColor = Color.FromArgb(random.Next(256), random.Next(256), random.Next(256));
         }
 
-        protected override void OnPaint(PaintEventArgs e)
+        public void UpdateCountdown(int minutes, int seconds)
         {
-            base.OnPaint(e);
-
-            // Draw the countdown text
-            using (var font = new Font("Arial", 24, FontStyle.Bold))
-            {
-                var graphics = e.Graphics;
-                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-
-                var textSize = graphics.MeasureString(countdownText, font);
-                var textX = (this.Width - textSize.Width) / 2;
-                var textY = (this.Height - textSize.Height) / 2;
-
-                // Draw the text in white
-                using (var brush = new SolidBrush(Color.White))
-                {
-                    graphics.DrawString(countdownText, font, brush, textX, textY);
-                }
-            }
+            countdownLabel.Text = $"{minutes}m {seconds}s";
+            AdjustFormSize(); // Adjust the form size based on the label content
         }
 
-        private void FlashTimer_Tick(object sender, EventArgs e)
+        public void UpdateCountdownOverlay((string label, int seconds)[] countdowns)
         {
-            // Cycle through the colors
-            this.BackColor = flashColors[flashColorIndex];
-            flashColorIndex = (flashColorIndex + 1) % flashColors.Length; // Move to the next color
+            countdownLabel.Text = string.Join(Environment.NewLine, countdowns.Select(c =>
+            {
+                int minutes = c.seconds / 60;
+                int seconds = c.seconds % 60;
+                return $"{c.label}: {minutes}m {seconds}s";
+            }));
+            AdjustFormSize(); // Adjust the form size based on the label content
+        }
+
+        public void AddStopButton(Action onStop)
+        {
+            // Remove any previously attached event handlers to avoid duplication
+            stopButton.Click -= (s, e) => this.Hide();
+            stopButton.Click += (s, e) => onStop();
+        }
+
+        private void AdjustFormSize()
+        {
+            // Calculate the required size for the label
+            countdownLabel.AutoSize = true;
+            countdownLabel.PerformLayout();
+
+            // Calculate the new width and height of the form
+            int newWidth = Math.Max(countdownLabel.PreferredWidth + 20, stopButton.Width + 20); // Add padding
+            int newHeight = countdownLabel.PreferredHeight + stopButton.Height + 40; // Add padding
+
+            // Set the new size of the form
+            this.Size = new Size(newWidth, newHeight);
         }
 
         private void CountdownOverlayForm_MouseDown(object sender, MouseEventArgs e)
@@ -109,6 +116,7 @@ namespace WindowsTaskbarApp.Forms
         {
             if (isDragging)
             {
+                // Calculate the new position of the form
                 this.Left += e.X - dragStartPoint.X;
                 this.Top += e.Y - dragStartPoint.Y;
             }
