@@ -43,7 +43,7 @@ namespace WindowsTaskbarApp.Forms
             this.Controls.Add(speakButton);
         }
 
-        private async void SpeakButton_Click(object sender, EventArgs e)
+        private void SpeakButton_Click(object sender, EventArgs e)
         {
             string text = textArea.Text;
 
@@ -54,13 +54,7 @@ namespace WindowsTaskbarApp.Forms
                     // Cancel any ongoing speech
                     speechSynthesizer.SpeakAsyncCancelAll();
 
-                    // Preload the SpeechSynthesizer with a silent phrase synchronously
-                    speechSynthesizer.Speak("Initializing");
-
-                    // Wait briefly to ensure the synthesizer is fully ready
-                    await Task.Delay(300);
-
-                    // Start speaking the actual text asynchronously
+                    // Start speaking the text asynchronously
                     speechSynthesizer.SpeakAsync(text);
                 }
                 catch (Exception ex)
