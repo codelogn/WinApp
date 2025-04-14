@@ -28,18 +28,13 @@ namespace WindowsTaskbarApp.Forms
 
             // Add "File" menu
             var fileMenu = new ToolStripMenuItem("File");
-            fileMenu.DropDownItems.Add("Open Form 1", null, OpenForm1);
-            fileMenu.DropDownItems.Add("Text to Speech", null, OpenTextToSpeechForm);
             fileMenu.DropDownItems.Add("Exit", null, (s, e) => Application.Exit());
             menuStrip.Items.Add(fileMenu);
 
-            // Add "Help" menu
-            var helpMenu = new ToolStripMenuItem("Help");
-            helpMenu.DropDownItems.Add("About", null, ShowAbout);
-            menuStrip.Items.Add(helpMenu);
-
             // Add "Tools" menu
             var toolsMenu = new ToolStripMenuItem("Tools");
+            toolsMenu.DropDownItems.Add("Open Web", null, OpenWeb); // Moved from "File" to "Tools"
+            toolsMenu.DropDownItems.Add("Text to Speech", null, OpenTextToSpeechForm); // Moved from "File" to "Tools"
             toolsMenu.DropDownItems.Add("Countdown Timer", null, OpenCountdownTimerForm);
 
             // Add "Clock Countdown" menu item
@@ -52,7 +47,17 @@ namespace WindowsTaskbarApp.Forms
             fullClockCountdownMenuItem.Click += FullClockCountdownMenuItem_Click;
             toolsMenu.DropDownItems.Add(fullClockCountdownMenuItem);
 
+            // Add "Execution" menu item
+            var executionMenuItem = new ToolStripMenuItem("Execution");
+            executionMenuItem.Click += OpenExecutionForm;
+            toolsMenu.DropDownItems.Add(executionMenuItem);
+
             menuStrip.Items.Add(toolsMenu);
+
+            // Add "Help" menu after "Tools"
+            var helpMenu = new ToolStripMenuItem("Help");
+            helpMenu.DropDownItems.Add("About", null, ShowAbout);
+            menuStrip.Items.Add(helpMenu);
 
             // Add the MenuStrip to the form
             this.MainMenuStrip = menuStrip;
@@ -82,8 +87,9 @@ namespace WindowsTaskbarApp.Forms
             overlayForm = new CountdownOverlayForm();
         }
 
-        private void OpenForm1(object sender, EventArgs e)
+        private void OpenWeb(object sender, EventArgs e)
         {
+            // Create and show an instance of Form1
             var form1 = new Form1();
             form1.Show();
         }
@@ -129,6 +135,19 @@ namespace WindowsTaskbarApp.Forms
             clockCountdownBox ??= new ClockCountdownBox();
             clockCountdownBox.Show();
             clockCountdownBox.StartCountdownToNextMark();
+        }
+
+        private void FullClockCountdownMenuItem_Click(object sender, EventArgs e)
+        {
+            // Check if the FullClockCountdownBox is null or disposed, and create a new instance if necessary
+            if (fullClockCountdownBox == null || fullClockCountdownBox.IsDisposed)
+            {
+                fullClockCountdownBox = new FullClockCountdownBox();
+            }
+
+            // Show the FullClockCountdownBox and start the countdown
+            fullClockCountdownBox.Show();
+            fullClockCountdownBox.StartCountdown();
         }
 
         private void ClockCountdownTimer_Tick(object sender, EventArgs e)
@@ -199,65 +218,11 @@ namespace WindowsTaskbarApp.Forms
             countdownTimer.Start();
         }
 
-        private void StartFullClockCountdownOverlay()
+        private void OpenExecutionForm(object sender, EventArgs e)
         {
-            overlayForm.SetRandomBackgroundColor();
-            overlayForm.Show();
-
-            // Initialize the timer for updating the countdown
-            if (fullClockCountdownTimer == null)
-            {
-                fullClockCountdownTimer = new Timer
-                {
-                    Interval = 1000 // 1 second
-                };
-                fullClockCountdownTimer.Tick += (s, e) => UpdateFullClockCountdownOverlay();
-            }
-
-            // Start the timer
-            fullClockCountdownTimer.Start();
-
-            // Add a button to stop and close the overlay
-            overlayForm.AddStopButton(() =>
-            {
-                fullClockCountdownTimer?.Stop();
-                overlayForm.Hide();
-            });
-        }
-
-        private void UpdateFullClockCountdownOverlay()
-        {
-            var now = DateTime.Now;
-
-            // Calculate remaining time for each interval
-            int secondsToNext1Min = 60 - now.Second;
-            int secondsToNext5Min = (5 - (now.Minute % 5)) * 60 - now.Second;
-            int secondsToNext15Min = (15 - (now.Minute % 15)) * 60 - now.Second;
-            int secondsToNext30Min = (30 - (now.Minute % 30)) * 60 - now.Second;
-            int secondsToNextHour = (60 - now.Minute) * 60 - now.Second;
-
-            // Update the overlay form with the calculated times
-            overlayForm.UpdateCountdownOverlay(new[]
-            {
-                ("1M", secondsToNext1Min),
-                ("5M", secondsToNext5Min),
-                ("15M", secondsToNext15Min),
-                ("30M", secondsToNext30Min),
-                ("1H", secondsToNextHour)
-            });
-        }
-
-        private void FullClockCountdownMenuItem_Click(object sender, EventArgs e)
-        {
-            // Check if the box is null or disposed, and create a new instance if necessary
-            if (fullClockCountdownBox == null || fullClockCountdownBox.IsDisposed)
-            {
-                fullClockCountdownBox = new FullClockCountdownBox();
-            }
-
-            // Show the box and start the countdown
-            fullClockCountdownBox.Show();
-            fullClockCountdownBox.StartCountdown();
+            // Create and show an instance of ExecutionForm
+            var executionForm = new ExecutionForm();
+            executionForm.Show();
         }
     }
 }
