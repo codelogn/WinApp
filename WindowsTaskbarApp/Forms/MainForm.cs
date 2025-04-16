@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using WindowsTaskbarApp.Forms.Alerts;
 
 namespace WindowsTaskbarApp.Forms
 {
@@ -51,6 +52,8 @@ namespace WindowsTaskbarApp.Forms
             var executionMenuItem = new ToolStripMenuItem("Execution");
             executionMenuItem.Click += OpenExecutionForm;
             toolsMenu.DropDownItems.Add(executionMenuItem);
+
+            toolsMenu.DropDownItems.Add("Alerts", null, OpenAlertsForm);
 
             menuStrip.Items.Add(toolsMenu);
 
@@ -223,6 +226,12 @@ namespace WindowsTaskbarApp.Forms
             // Create and show an instance of ExecutionForm
             var executionForm = new ExecutionForm();
             executionForm.Show();
+        }
+
+        private void OpenAlertsForm(object sender, EventArgs e)
+        {
+            var alertsForm = new AlertsForm();
+            alertsForm.Show();
         }
     }
 }

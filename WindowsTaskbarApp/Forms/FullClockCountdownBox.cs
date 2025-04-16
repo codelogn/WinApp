@@ -15,7 +15,7 @@ namespace WindowsTaskbarApp.Forms
         public FullClockCountdownBox()
         {
             // Set the size and background color
-            this.Size = new Size(200, 150); // Reduced width but kept height the same
+            this.Size = new Size(120, 100); // Reduced width and height
             this.FormBorderStyle = FormBorderStyle.None; // Remove the title bar
             this.TopMost = true; // Ensure the form is always on top
             this.Opacity = 0.8; // Make the box more transparent
@@ -28,10 +28,11 @@ namespace WindowsTaskbarApp.Forms
             {
                 Text = "Exit",
                 Dock = DockStyle.Bottom,
-                Height = 30,
+                Height = 20, // Smaller height
                 BackColor = Color.Red,
                 ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Arial", 8, FontStyle.Bold) // Smaller font size
             };
             exitButton.Click += (s, e) => this.Close();
             this.Controls.Add(exitButton);
@@ -60,6 +61,13 @@ namespace WindowsTaskbarApp.Forms
         {
             // Redraw the form to update the countdown
             this.Invalidate(); // Triggers the Paint event
+
+            // Change background color every 15 minutes
+            var now = DateTime.Now;
+            if (now.Minute % 15 == 0 && now.Second == 0) // Check if it's the start of a 15-minute interval
+            {
+                SetRandomBackgroundColor();
+            }
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -86,11 +94,11 @@ namespace WindowsTaskbarApp.Forms
 
             // Draw the countdown text centered
             var graphics = e.Graphics;
-            var font = new Font("Arial", 10, FontStyle.Bold);
+            var font = new Font("Arial", 8, FontStyle.Bold); // Smaller font size
             var textBrush = new SolidBrush(Color.White);
             var borderBrush = new SolidBrush(Color.Black);
 
-            var totalHeight = countdowns.Length * 20; // Calculate total height of all lines
+            var totalHeight = countdowns.Length * 15; // Adjusted for smaller font
             var startY = (this.ClientSize.Height - totalHeight) / 2 - 10; // Center vertically and move slightly up
 
             for (int i = 0; i < countdowns.Length; i++)
@@ -98,7 +106,7 @@ namespace WindowsTaskbarApp.Forms
                 var text = countdowns[i];
                 var textSize = graphics.MeasureString(text, font);
                 var x = (this.ClientSize.Width - textSize.Width) / 2; // Center horizontally
-                var y = startY + (i * 20);
+                var y = startY + (i * 15); // Adjusted line spacing
 
                 // Draw border (shadow effect)
                 graphics.DrawString(text, font, borderBrush, x - 1, y - 1);
