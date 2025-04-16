@@ -10,8 +10,6 @@ namespace WindowsTaskbarApp.Forms.Alerts
         private SQLiteConnection connection;
         private DataGridView alertsGridView;
         private Button addButton;
-        private RadioButton getRadioButton;
-        private RadioButton postRadioButton;
 
         public AlertsForm()
         {
@@ -24,12 +22,6 @@ namespace WindowsTaskbarApp.Forms.Alerts
         {
             this.alertsGridView = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
             this.addButton = new Button { Text = "Add Alert", Dock = DockStyle.Top };
-
-            var radioPanel = new Panel { Dock = DockStyle.Top, Height = 30 };
-            this.getRadioButton = new RadioButton { Text = "GET", Dock = DockStyle.Left, Width = 60 }; // Adjusted width
-            this.postRadioButton = new RadioButton { Text = "POST", Dock = DockStyle.Left, Width = 70 }; // Increased width
-            radioPanel.Controls.Add(this.getRadioButton);
-            radioPanel.Controls.Add(this.postRadioButton);
 
             this.addButton.Click += AddButton_Click;
             this.alertsGridView.CellContentClick += AlertsGridView_CellContentClick;
@@ -110,7 +102,6 @@ namespace WindowsTaskbarApp.Forms.Alerts
 
             this.Controls.Add(this.alertsGridView);
             this.Controls.Add(this.addButton);
-            this.Controls.Add(radioPanel);
 
             this.Text = "Manage Alerts";
             this.Size = new System.Drawing.Size(600, 400);
