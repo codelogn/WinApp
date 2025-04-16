@@ -48,3 +48,5 @@ WindowsTaskbarApp/out/
 # Ignore IDE-specific files
 .idea/
 .vs/
+
+WindowsTaskbarApp/alerts.db
