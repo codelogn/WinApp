@@ -80,31 +80,31 @@ namespace WindowsTaskbarApp.Forms.Alerts
             this.Size = new System.Drawing.Size(400, 500);
 
             var topicLabel = new Label { Text = "Topic:", Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-            this.topicTextBox = new TextBox { PlaceholderText = "Enter Topic", Dock = DockStyle.Top };
+            this.topicTextBox = new TextBox { PlaceholderText = "Enter Topic", Dock = DockStyle.Top, Height = 30 };
 
             var timeLabel = new Label { Text = "Time:", Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-            this.timePicker = new DateTimePicker { Format = DateTimePickerFormat.Time, Dock = DockStyle.Top };
+            this.timePicker = new DateTimePicker { Format = DateTimePickerFormat.Time, Dock = DockStyle.Top, Height = 30 };
 
             var minutesLabel = new Label { Text = "Minutes:", Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-            this.minutesTextBox = new TextBox { PlaceholderText = "Enter Minutes", Dock = DockStyle.Top };
+            this.minutesTextBox = new TextBox { PlaceholderText = "Enter Minutes", Dock = DockStyle.Top, Height = 30 };
 
             var keywordsLabel = new Label { Text = "Keywords:", Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-            this.keywordsTextArea = new TextBox { PlaceholderText = "Enter Keywords", Multiline = true, Height = 50, Dock = DockStyle.Top };
+            this.keywordsTextArea = new TextBox { PlaceholderText = "Enter Keywords", Multiline = true, Height = 60, Dock = DockStyle.Top };
 
             var urlLabel = new Label { Text = "URL:", Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-            this.urlTextBox = new TextBox { PlaceholderText = "Enter URL", Dock = DockStyle.Top };
+            this.urlTextBox = new TextBox { PlaceholderText = "Enter URL", Dock = DockStyle.Top, Height = 30 };
 
             var methodLabel = new Label { Text = "Method:", Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-            var radioPanel = new Panel { Dock = DockStyle.Top, Height = 30 };
-            this.getRadioButton = new RadioButton { Text = "GET", Dock = DockStyle.Left, Width = 50 };
-            this.postRadioButton = new RadioButton { Text = "POST", Dock = DockStyle.Left, Width = 50 };
+            var radioPanel = new Panel { Dock = DockStyle.Top, Height = 40 };
+            this.getRadioButton = new RadioButton { Text = "GET", Dock = DockStyle.Left, Width = 60 };
+            this.postRadioButton = new RadioButton { Text = "POST", Dock = DockStyle.Left, Width = 70 }; // Increased width to fit "POST"
             radioPanel.Controls.Add(this.getRadioButton);
             radioPanel.Controls.Add(this.postRadioButton);
 
             var bodyLabel = new Label { Text = "Body:", Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
             this.bodyTextArea = new TextBox { PlaceholderText = "Enter Body", Multiline = true, Height = 100, Dock = DockStyle.Top };
 
-            this.saveButton = new Button { Text = "Save", Dock = DockStyle.Bottom };
+            this.saveButton = new Button { Text = "Save", Dock = DockStyle.Bottom, Height = 40 };
             this.saveButton.Click += SaveButton_Click;
 
             this.Controls.Add(this.saveButton);
