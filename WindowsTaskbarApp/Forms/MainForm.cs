@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using WindowsTaskbarApp.Forms.Alerts;
+using WindowsTaskbarApp.Jobs;
 
 namespace WindowsTaskbarApp.Forms
 {
@@ -17,6 +18,9 @@ namespace WindowsTaskbarApp.Forms
         private CountdownTimerBox countdownTimerBox;
         private ClockCountdownBox clockCountdownBox;
         private FullClockCountdownBox fullClockCountdownBox;
+        private ToolStripMenuItem backgroundJobsMenuItem;
+        private BackgroundJobs backgroundJobs;
+        private TextBox statusTextBox;
 
         public MainForm()
         {
@@ -55,6 +59,11 @@ namespace WindowsTaskbarApp.Forms
 
             toolsMenu.DropDownItems.Add("Alerts", null, OpenAlertsForm);
 
+            // Add Background Jobs menu item
+            backgroundJobsMenuItem = new ToolStripMenuItem("Background Jobs");
+            backgroundJobsMenuItem.Click += BackgroundJobsMenuItem_Click;
+            toolsMenu.DropDownItems.Add(backgroundJobsMenuItem); // Assuming toolsMenu is the Tools menu
+
             menuStrip.Items.Add(toolsMenu);
 
             // Add "Help" menu after "Tools"
@@ -88,6 +97,12 @@ namespace WindowsTaskbarApp.Forms
 
             // Initialize the overlay form
             overlayForm = new CountdownOverlayForm();
+        }
+
+        private void MainForm_Load(object sender, EventArgs e)
+        {
+            backgroundJobs = new BackgroundJobs();
+            backgroundJobs.JobStatusUpdated += BackgroundJobs_JobStatusUpdated;
         }
 
         private void OpenWeb(object sender, EventArgs e)
@@ -232,6 +247,21 @@ namespace WindowsTaskbarApp.Forms
         {
             var alertsForm = new AlertsForm();
             alertsForm.Show();
+        }
+
+        private void BackgroundJobsMenuItem_Click(object sender, EventArgs e)
+        {
+            var backgroundJobsForm = new BackgroundJobsForm(backgroundJobs);
+            backgroundJobsForm.ShowDialog();
+        }
+
+        private void BackgroundJobs_JobStatusUpdated(string message)
+        {
+            // Update the UI with the job status
+            Invoke(new Action(() =>
+            {
+                statusTextBox.AppendText(message + Environment.NewLine);
+            }));
         }
     }
 }
