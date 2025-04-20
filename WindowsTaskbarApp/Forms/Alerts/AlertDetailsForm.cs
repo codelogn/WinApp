@@ -2,7 +2,8 @@ using System;
 using System.ComponentModel;
 using System.Windows.Forms;
 using System.Drawing;
-using WindowsTaskbarApp.Utils; // Add this at the top of the file
+using System.Data.SQLite; // For SQLiteConnection
+using WindowsTaskbarApp.Utils; // For the Alerts utility class
 
 namespace WindowsTaskbarApp.Forms.Alerts
 {
@@ -70,6 +71,9 @@ namespace WindowsTaskbarApp.Forms.Alerts
             get => lastTriggeredPicker.Value.ToString("yyyy-MM-dd HH:mm:ss");
             set => lastTriggeredPicker.Value = DateTime.TryParse(value, out var date) ? date : DateTime.Now;
         }
+
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public int? Id { get; set; } // Nullable to handle new records
 
         private TextBox topicTextBox;
         private TextBox timeTextBox;
@@ -169,20 +173,39 @@ namespace WindowsTaskbarApp.Forms.Alerts
             layoutPanel.Controls.Add(control);
         }
 
-        private void SaveButton_Click(object sender, EventArgs e)
+        private async void SaveButton_Click(object sender, EventArgs e)
         {
-            this.Topic = topicTextBox.Text;
-            this.Time = timeTextBox.Text;
-            this.Minutes = minutesTextBox.Text;
-            this.Keywords = keywordsTextBox.Text;
-            this.URL = urlTextBox.Text;
-            this.Method = methodComboBox.Text;
-            this.Body = bodyTextBox.Text;
-            this.Enabled = enabledCheckBox.Checked ? "Yes" : "No";
-            this.LastTriggered = lastTriggeredPicker.Value.ToString("yyyy-MM-dd HH:mm:ss");
+            try
+            {
+                using (var connection = new SQLiteConnection("Data Source=alerts.db;Version=3;"))
+                {
+                    connection.Open(); // Ensure the connection is open
 
-            this.DialogResult = DialogResult.OK;
-            this.Close();
+                    await Alert.SaveAlertAsync(
+                        connection: connection,
+                        topic: topicTextBox.Text,
+                        time: timeTextBox.Text,
+                        minutes: minutesTextBox.Text,
+                        keywords: keywordsTextBox.Text,
+                        url: urlTextBox.Text,
+                        method: methodComboBox.Text,
+                        body: bodyTextBox.Text,
+                        enabled: enabledCheckBox.Checked ? "Yes" : "No",
+                        lastTriggered: lastTriggeredPicker.Value.ToString("yyyy-MM-dd HH:mm:ss"),
+                        id: Id // Pass the Id if it exists
+                    );
+
+                    MessageBox.Show("Alert saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    // Set DialogResult to OK to indicate success
+                    this.DialogResult = DialogResult.OK;
+                    this.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error saving alert: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private async void TestButton_Click(object sender, EventArgs e)

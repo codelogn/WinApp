@@ -4,7 +4,7 @@ using System.Data.SQLite;
 using System.Net.Http;
 using System.Windows.Forms;
 using System.Drawing;
-using WindowsTaskbarApp.Utils;
+using WindowsTaskbarApp.Utils; 
 
 namespace WindowsTaskbarApp.Forms.Alerts
 {
@@ -41,7 +41,7 @@ namespace WindowsTaskbarApp.Forms.Alerts
                 Name = "Id",
                 HeaderText = "Id",
                 DataPropertyName = "Id",
-                Visible = false // Hide the Id column
+                Visible = true // Make the Id column visible
             });
 
             alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
@@ -185,27 +185,13 @@ namespace WindowsTaskbarApp.Forms.Alerts
             alertsGridView.DataSource = dataTable; // Bind the data source
         }
 
-        private void AddButton_Click(object sender, EventArgs e)
+        private async void AddButton_Click(object sender, EventArgs e)
         {
             using (var detailsForm = new AlertDetailsForm())
             {
                 if (detailsForm.ShowDialog() == DialogResult.OK)
                 {
-                    var command = connection.CreateCommand();
-                    command.CommandText = @"
-                        INSERT INTO Alerts (Topic, Time, Minutes, Keywords, URL, Method, Body, Enabled, LastTriggered)
-                        VALUES (@topic, @time, @minutes, @keywords, @url, @method, @body, @enabled, @lastTriggered)";
-                    command.Parameters.AddWithValue("@topic", detailsForm.Topic);
-                    command.Parameters.AddWithValue("@time", detailsForm.Time);
-                    command.Parameters.AddWithValue("@minutes", detailsForm.Minutes);
-                    command.Parameters.AddWithValue("@keywords", detailsForm.Keywords);
-                    command.Parameters.AddWithValue("@url", detailsForm.URL);
-                    command.Parameters.AddWithValue("@method", detailsForm.Method);
-                    command.Parameters.AddWithValue("@body", detailsForm.Body);
-                    command.Parameters.AddWithValue("@enabled", detailsForm.Enabled);
-                    command.Parameters.AddWithValue("@lastTriggered", detailsForm.LastTriggered);
-                    command.ExecuteNonQuery();
-
+                    // Refresh the grid to show the new record
                     LoadAlerts();
                     alertsGridView.Refresh();
                 }
@@ -245,35 +231,21 @@ namespace WindowsTaskbarApp.Forms.Alerts
                 {
                     using (var detailsForm = new AlertDetailsForm())
                     {
-                        // Pre-fill the form with existing data
-                        detailsForm.Topic = alertsGridView.Rows[e.RowIndex].Cells["Topic"].Value?.ToString() ?? string.Empty;
-                        detailsForm.Time = alertsGridView.Rows[e.RowIndex].Cells["Time"].Value?.ToString() ?? string.Empty;
-                        detailsForm.Minutes = alertsGridView.Rows[e.RowIndex].Cells["Minutes"].Value?.ToString() ?? string.Empty;
-                        detailsForm.Keywords = alertsGridView.Rows[e.RowIndex].Cells["Keywords"].Value?.ToString() ?? string.Empty;
-                        detailsForm.URL = alertsGridView.Rows[e.RowIndex].Cells["URL"].Value?.ToString() ?? string.Empty;
-                        detailsForm.Method = alertsGridView.Rows[e.RowIndex].Cells["Method"].Value?.ToString() ?? string.Empty;
-                        detailsForm.Body = alertsGridView.Rows[e.RowIndex].Cells["Body"].Value?.ToString() ?? string.Empty;
+                        // Pass the selected record's data to the form
+                        detailsForm.Id = Convert.ToInt32(alertsGridView.Rows[e.RowIndex].Cells["Id"].Value);
+                        detailsForm.Topic = alertsGridView.Rows[e.RowIndex].Cells["Topic"].Value?.ToString();
+                        detailsForm.Time = alertsGridView.Rows[e.RowIndex].Cells["Time"].Value?.ToString();
+                        detailsForm.Minutes = alertsGridView.Rows[e.RowIndex].Cells["Minutes"].Value?.ToString();
+                        detailsForm.Keywords = alertsGridView.Rows[e.RowIndex].Cells["Keywords"].Value?.ToString();
+                        detailsForm.URL = alertsGridView.Rows[e.RowIndex].Cells["URL"].Value?.ToString();
+                        detailsForm.Method = alertsGridView.Rows[e.RowIndex].Cells["Method"].Value?.ToString();
+                        detailsForm.Body = alertsGridView.Rows[e.RowIndex].Cells["Body"].Value?.ToString();
+                        detailsForm.Enabled = alertsGridView.Rows[e.RowIndex].Cells["Enabled"].Value?.ToString();
+                        detailsForm.LastTriggered = alertsGridView.Rows[e.RowIndex].Cells["LastTriggered"].Value?.ToString();
 
                         if (detailsForm.ShowDialog() == DialogResult.OK)
                         {
-                            var command = connection.CreateCommand();
-                            command.CommandText = @"
-                                UPDATE Alerts
-                                SET Topic = @topic, Time = @time, Minutes = @minutes, Keywords = @keywords,
-                                    URL = @url, Method = @method, Body = @body, Enabled = @enabled, LastTriggered = @lastTriggered
-                                WHERE Id = @id";
-                            command.Parameters.AddWithValue("@id", id);
-                            command.Parameters.AddWithValue("@topic", detailsForm.Topic);
-                            command.Parameters.AddWithValue("@time", detailsForm.Time);
-                            command.Parameters.AddWithValue("@minutes", detailsForm.Minutes);
-                            command.Parameters.AddWithValue("@keywords", detailsForm.Keywords);
-                            command.Parameters.AddWithValue("@url", detailsForm.URL);
-                            command.Parameters.AddWithValue("@method", detailsForm.Method);
-                            command.Parameters.AddWithValue("@body", detailsForm.Body);
-                            command.Parameters.AddWithValue("@enabled", detailsForm.Enabled);
-                            command.Parameters.AddWithValue("@lastTriggered", detailsForm.LastTriggered);
-                            command.ExecuteNonQuery();
-
+                            // Refresh the grid to show the updated record
                             LoadAlerts();
                             alertsGridView.Refresh();
                         }
