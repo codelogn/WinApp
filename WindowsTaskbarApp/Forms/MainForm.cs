@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using WindowsTaskbarApp.Forms.Alerts;
 using WindowsTaskbarApp.Jobs;
+using WindowsTaskbarApp.Forms.Jobs;
 
 namespace WindowsTaskbarApp.Forms
 {

@@ -1,7 +1,10 @@
 using System;
 using System.Data;
 using System.Data.SQLite;
+using System.Net.Http;
 using System.Windows.Forms;
+using System.Drawing;
+using WindowsTaskbarApp.Utils;
 
 namespace WindowsTaskbarApp.Forms.Alerts
 {
@@ -21,84 +24,122 @@ namespace WindowsTaskbarApp.Forms.Alerts
         private void InitializeComponent()
         {
             this.alertsGridView = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
-            this.addButton = new Button { Text = "Add Alert", Dock = DockStyle.Top };
+            this.addButton = new Button
+            {
+                Text = "Add Alert",
+                Dock = DockStyle.Top,
+                BackColor = Color.DarkBlue,
+                ForeColor = Color.White,
+                Font = new Font("Arial", 10, FontStyle.Bold)
+            };
 
             this.addButton.Click += AddButton_Click;
-            this.alertsGridView.CellContentClick += AlertsGridView_CellContentClick;
 
-            // Configure DataGridView columns
-            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn 
-            { 
-                Name = "Id", // Explicitly set the Name property
-                HeaderText = "Id", 
-                DataPropertyName = "Id", 
-                Visible = true // Set to false if you don't want to display it
+            // Add data columns
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "Id",
+                HeaderText = "Id",
+                DataPropertyName = "Id",
+                Visible = false // Hide the Id column
             });
 
-            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn 
-            { 
-                Name = "Topic", // Explicitly set the Name property
-                HeaderText = "Topic", 
-                DataPropertyName = "Topic" 
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "Topic",
+                HeaderText = "Topic",
+                DataPropertyName = "Topic"
             });
 
-            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn 
-            { 
-                Name = "Time", // Explicitly set the Name property
-                HeaderText = "Time", 
-                DataPropertyName = "Time" 
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "Time",
+                HeaderText = "Time",
+                DataPropertyName = "Time"
             });
 
-            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn 
-            { 
-                Name = "Minutes", // Explicitly set the Name property
-                HeaderText = "Minutes", 
-                DataPropertyName = "Minutes" 
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "Minutes",
+                HeaderText = "Minutes",
+                DataPropertyName = "Minutes"
             });
 
-            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn 
-            { 
-                Name = "Keywords", // Explicitly set the Name property
-                HeaderText = "Keywords", 
-                DataPropertyName = "Keywords" 
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "Keywords",
+                HeaderText = "Keywords",
+                DataPropertyName = "Keywords"
             });
 
-            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn 
-            { 
-                Name = "URL", // Explicitly set the Name property
-                HeaderText = "URL", 
-                DataPropertyName = "URL" 
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "URL",
+                HeaderText = "URL",
+                DataPropertyName = "URL"
             });
 
-            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn 
-            { 
-                Name = "Method", // Explicitly set the Name property
-                HeaderText = "Method", 
-                DataPropertyName = "Method" 
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "Method",
+                HeaderText = "Method",
+                DataPropertyName = "Method"
             });
 
-            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn 
-            { 
-                Name = "Body", // Explicitly set the Name property
-                HeaderText = "Body", 
-                DataPropertyName = "Body" 
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "Body",
+                HeaderText = "Body",
+                DataPropertyName = "Body"
             });
 
-            alertsGridView.Columns.Add(new DataGridViewButtonColumn 
-            { 
-                Name = "Edit", // Explicitly set the Name property
-                HeaderText = "Edit", 
-                Text = "Edit", 
-                UseColumnTextForButtonValue = true 
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "Enabled",
+                HeaderText = "Enabled",
+                DataPropertyName = "Enabled"
             });
 
-            alertsGridView.Columns.Add(new DataGridViewButtonColumn 
-            { 
-                Name = "Delete", // Explicitly set the Name property
-                HeaderText = "Delete", 
-                Text = "Delete", 
-                UseColumnTextForButtonValue = true 
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "LastTriggered",
+                HeaderText = "Last Triggered",
+                DataPropertyName = "LastTriggered"
             });
+
+            // Add button columns
+            var editButtonColumn = new DataGridViewButtonColumn
+            {
+                Name = "Edit",
+                HeaderText = "Edit",
+                Text = "Edit",
+                UseColumnTextForButtonValue = true
+            };
+            alertsGridView.Columns.Add(editButtonColumn);
+
+            var deleteButtonColumn = new DataGridViewButtonColumn
+            {
+                Name = "Delete",
+                HeaderText = "Delete",
+                Text = "Delete",
+                UseColumnTextForButtonValue = true
+            };
+            alertsGridView.Columns.Add(deleteButtonColumn);
+
+            var testButtonColumn = new DataGridViewButtonColumn
+            {
+                Name = "Test",
+                HeaderText = "Test",
+                Text = "Test",
+                UseColumnTextForButtonValue = true
+            };
+            alertsGridView.Columns.Add(testButtonColumn);
+
+            // Add the CellPainting event handler
+            alertsGridView.CellPainting += AlertsGridView_CellPainting;
+
+            // Add the CellContentClick event handler
+            alertsGridView.CellContentClick += AlertsGridView_CellContentClick;
 
             this.Controls.Add(this.alertsGridView);
             this.Controls.Add(this.addButton);
@@ -122,7 +163,9 @@ namespace WindowsTaskbarApp.Forms.Alerts
                     Keywords TEXT,
                     URL TEXT,
                     Method TEXT,
-                    Body TEXT
+                    Body TEXT,
+                    Enabled TEXT DEFAULT 'Yes', -- New field for Enabled (Yes/No)
+                    LastTriggered TEXT -- New field for Last Triggered (Datetime)
                 );
             ";
             command.ExecuteNonQuery();
@@ -131,7 +174,9 @@ namespace WindowsTaskbarApp.Forms.Alerts
         private void LoadAlerts()
         {
             var command = connection.CreateCommand();
-            command.CommandText = "SELECT Id, Topic, Time, Minutes, Keywords, URL, Method, Body FROM Alerts"; // Explicitly include "Id"
+            command.CommandText = @"
+                SELECT Id, Topic, Time, Minutes, Keywords, URL, Method, Body, Enabled, LastTriggered
+                FROM Alerts"; // Include all columns
 
             var adapter = new SQLiteDataAdapter(command);
             var dataTable = new DataTable();
@@ -148,8 +193,8 @@ namespace WindowsTaskbarApp.Forms.Alerts
                 {
                     var command = connection.CreateCommand();
                     command.CommandText = @"
-                        INSERT INTO Alerts (Topic, Time, Minutes, Keywords, URL, Method, Body)
-                        VALUES (@topic, @time, @minutes, @keywords, @url, @method, @body)";
+                        INSERT INTO Alerts (Topic, Time, Minutes, Keywords, URL, Method, Body, Enabled, LastTriggered)
+                        VALUES (@topic, @time, @minutes, @keywords, @url, @method, @body, @enabled, @lastTriggered)";
                     command.Parameters.AddWithValue("@topic", detailsForm.Topic);
                     command.Parameters.AddWithValue("@time", detailsForm.Time);
                     command.Parameters.AddWithValue("@minutes", detailsForm.Minutes);
@@ -157,6 +202,8 @@ namespace WindowsTaskbarApp.Forms.Alerts
                     command.Parameters.AddWithValue("@url", detailsForm.URL);
                     command.Parameters.AddWithValue("@method", detailsForm.Method);
                     command.Parameters.AddWithValue("@body", detailsForm.Body);
+                    command.Parameters.AddWithValue("@enabled", detailsForm.Enabled);
+                    command.Parameters.AddWithValue("@lastTriggered", detailsForm.LastTriggered);
                     command.ExecuteNonQuery();
 
                     LoadAlerts();
@@ -165,11 +212,10 @@ namespace WindowsTaskbarApp.Forms.Alerts
             }
         }
 
-        private void AlertsGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        private async void AlertsGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex >= 0)
+            if (e.RowIndex >= 0) // Ensure a valid row is clicked
             {
-                // Get the Id of the selected row
                 var idCell = alertsGridView.Rows[e.RowIndex].Cells["Id"];
                 if (idCell == null || idCell.Value == null)
                 {
@@ -179,9 +225,23 @@ namespace WindowsTaskbarApp.Forms.Alerts
 
                 var id = Convert.ToInt32(idCell.Value);
 
-                // Check if the clicked column is the "Edit" button
-                if (alertsGridView.Columns[e.ColumnIndex] is DataGridViewButtonColumn editColumn &&
-                    editColumn.HeaderText == "Edit")
+                // Handle the "Test" button click
+                if (alertsGridView.Columns[e.ColumnIndex] is DataGridViewButtonColumn testColumn &&
+                    testColumn.Name == "Test")
+                {
+                    var url = alertsGridView.Rows[e.RowIndex].Cells["URL"].Value?.ToString();
+                    if (string.IsNullOrEmpty(url))
+                    {
+                        MessageBox.Show("URL is empty.");
+                        return;
+                    }
+
+                    await UrlTester.TestUrlAsync(url); // Call the shared utility method
+                }
+
+                // Handle the "Edit" button click
+                else if (alertsGridView.Columns[e.ColumnIndex] is DataGridViewButtonColumn editColumn &&
+                         editColumn.Name == "Edit")
                 {
                     using (var detailsForm = new AlertDetailsForm())
                     {
@@ -200,7 +260,7 @@ namespace WindowsTaskbarApp.Forms.Alerts
                             command.CommandText = @"
                                 UPDATE Alerts
                                 SET Topic = @topic, Time = @time, Minutes = @minutes, Keywords = @keywords,
-                                    URL = @url, Method = @method, Body = @body
+                                    URL = @url, Method = @method, Body = @body, Enabled = @enabled, LastTriggered = @lastTriggered
                                 WHERE Id = @id";
                             command.Parameters.AddWithValue("@id", id);
                             command.Parameters.AddWithValue("@topic", detailsForm.Topic);
@@ -210,6 +270,8 @@ namespace WindowsTaskbarApp.Forms.Alerts
                             command.Parameters.AddWithValue("@url", detailsForm.URL);
                             command.Parameters.AddWithValue("@method", detailsForm.Method);
                             command.Parameters.AddWithValue("@body", detailsForm.Body);
+                            command.Parameters.AddWithValue("@enabled", detailsForm.Enabled);
+                            command.Parameters.AddWithValue("@lastTriggered", detailsForm.LastTriggered);
                             command.ExecuteNonQuery();
 
                             LoadAlerts();
@@ -217,9 +279,10 @@ namespace WindowsTaskbarApp.Forms.Alerts
                         }
                     }
                 }
-                // Check if the clicked column is the "Delete" button
+
+                // Handle the "Delete" button click
                 else if (alertsGridView.Columns[e.ColumnIndex] is DataGridViewButtonColumn deleteColumn &&
-                         deleteColumn.HeaderText == "Delete")
+                         deleteColumn.Name == "Delete")
                 {
                     var result = MessageBox.Show("Are you sure you want to delete this alert?", "Confirm Delete", MessageBoxButtons.YesNo);
                     if (result == DialogResult.Yes)
@@ -232,6 +295,60 @@ namespace WindowsTaskbarApp.Forms.Alerts
                         LoadAlerts();
                         alertsGridView.Refresh();
                     }
+                }
+            }
+        }
+
+        private void AlertsGridView_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+            {
+                var column = alertsGridView.Columns[e.ColumnIndex];
+
+                // Check if the column is a button column
+                if (column is DataGridViewButtonColumn)
+                {
+                    e.PaintBackground(e.ClipBounds, true);
+
+                    // Set button colors
+                    Color buttonBackColor = Color.DarkBlue;
+                    Color buttonForeColor = Color.White;
+
+                    if (column.Name == "Edit")
+                    {
+                        buttonBackColor = Color.LightBlue;
+                    }
+                    else if (column.Name == "Delete")
+                    {
+                        buttonBackColor = Color.Red;
+                    }
+                    else if (column.Name == "Test")
+                    {
+                        buttonBackColor = Color.Green;
+                    }
+
+                    // Draw the button
+                    using (Brush backBrush = new SolidBrush(buttonBackColor))
+                    using (Brush foreBrush = new SolidBrush(buttonForeColor))
+                    {
+                        // Fill the button background
+                        e.Graphics.FillRectangle(backBrush, e.CellBounds);
+
+                        // Draw the button text
+                        var text = column.HeaderText;
+                        if (column is DataGridViewButtonColumn buttonColumn)
+                        {
+                            text = buttonColumn.Text;
+                        }
+
+                        var textSize = e.Graphics.MeasureString(text, e.CellStyle.Font);
+                        var textX = e.CellBounds.Left + (e.CellBounds.Width - textSize.Width) / 2;
+                        var textY = e.CellBounds.Top + (e.CellBounds.Height - textSize.Height) / 2;
+
+                        e.Graphics.DrawString(text, e.CellStyle.Font, foreBrush, new PointF(textX, textY));
+                    }
+
+                    e.Handled = true; // Prevent default painting
                 }
             }
         }

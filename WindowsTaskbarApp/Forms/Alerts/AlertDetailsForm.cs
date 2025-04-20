@@ -1,6 +1,8 @@
 using System;
 using System.ComponentModel;
 using System.Windows.Forms;
+using System.Drawing;
+using WindowsTaskbarApp.Utils; // Add this at the top of the file
 
 namespace WindowsTaskbarApp.Forms.Alerts
 {
@@ -16,8 +18,8 @@ namespace WindowsTaskbarApp.Forms.Alerts
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Time
         {
-            get => timePicker.Value.ToString("HH:mm");
-            set => timePicker.Value = DateTime.TryParse(value, out var time) ? time : DateTime.Now;
+            get => timeTextBox.Text;
+            set => timeTextBox.Text = value;
         }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -30,8 +32,8 @@ namespace WindowsTaskbarApp.Forms.Alerts
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Keywords
         {
-            get => keywordsTextArea.Text;
-            set => keywordsTextArea.Text = value;
+            get => keywordsTextBox.Text;
+            set => keywordsTextBox.Text = value;
         }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -44,30 +46,43 @@ namespace WindowsTaskbarApp.Forms.Alerts
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Method
         {
-            get => getRadioButton.Checked ? "GET" : postRadioButton.Checked ? "POST" : string.Empty;
-            set
-            {
-                if (value == "GET") getRadioButton.Checked = true;
-                else if (value == "POST") postRadioButton.Checked = true;
-            }
+            get => methodComboBox.Text;
+            set => methodComboBox.Text = value;
         }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Body
         {
-            get => bodyTextArea.Text;
-            set => bodyTextArea.Text = value;
+            get => bodyTextBox.Text;
+            set => bodyTextBox.Text = value;
+        }
+
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public string Enabled
+        {
+            get => enabledCheckBox.Checked ? "Yes" : "No";
+            set => enabledCheckBox.Checked = value == "Yes";
+        }
+
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public string LastTriggered
+        {
+            get => lastTriggeredPicker.Value.ToString("yyyy-MM-dd HH:mm:ss");
+            set => lastTriggeredPicker.Value = DateTime.TryParse(value, out var date) ? date : DateTime.Now;
         }
 
         private TextBox topicTextBox;
-        private DateTimePicker timePicker;
+        private TextBox timeTextBox;
         private TextBox minutesTextBox;
-        private TextBox keywordsTextArea;
+        private TextBox keywordsTextBox;
         private TextBox urlTextBox;
-        private RadioButton getRadioButton;
-        private RadioButton postRadioButton;
-        private TextBox bodyTextArea;
+        private ComboBox methodComboBox;
+        private TextBox bodyTextBox;
         private Button saveButton;
+        private Button testButton;
+        private CheckBox enabledCheckBox;
+        private DateTimePicker lastTriggeredPicker;
+        private TableLayoutPanel layoutPanel;
 
         public AlertDetailsForm()
         {
@@ -76,66 +91,104 @@ namespace WindowsTaskbarApp.Forms.Alerts
 
         private void InitializeComponent()
         {
+            // Create a TableLayoutPanel
+            layoutPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 10,
+                Padding = new Padding(10),
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink
+            };
+
+            layoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30)); // Label column
+            layoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70)); // Input field column
+
+            // Add fields to the layout
+            AddFieldToLayout("Topic:", topicTextBox = new TextBox { Dock = DockStyle.Fill });
+            AddFieldToLayout("Time:", timeTextBox = new TextBox { Dock = DockStyle.Fill });
+            AddFieldToLayout("Minutes:", minutesTextBox = new TextBox { Dock = DockStyle.Fill });
+            AddFieldToLayout("Keywords:", keywordsTextBox = new TextBox { Dock = DockStyle.Fill });
+            AddFieldToLayout("URL:", urlTextBox = new TextBox { Dock = DockStyle.Fill });
+            AddFieldToLayout("Method:", methodComboBox = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList });
+            methodComboBox.Items.AddRange(new string[] { "GET", "POST" });
+            AddFieldToLayout("Body:", bodyTextBox = new TextBox { Dock = DockStyle.Fill, Multiline = true, Height = 100 });
+            AddFieldToLayout("Enabled:", enabledCheckBox = new CheckBox { Dock = DockStyle.Left });
+            AddFieldToLayout("Last Triggered:", lastTriggeredPicker = new DateTimePicker
+            {
+                Dock = DockStyle.Fill,
+                Format = DateTimePickerFormat.Custom,
+                CustomFormat = "yyyy-MM-dd HH:mm:ss"
+            });
+
+            // Create Save button
+            saveButton = new Button
+            {
+                Text = "Save",
+                Dock = DockStyle.Top,
+                BackColor = Color.DarkBlue, // Set background color
+                ForeColor = Color.White,   // Set text color
+                Font = new Font("Arial", 10, FontStyle.Bold) // Optional: Set font style
+            };
+            saveButton.Click += SaveButton_Click;
+
+            // Create Test button
+            testButton = new Button
+            {
+                Text = "Test URL",
+                Dock = DockStyle.Top,
+                BackColor = Color.Green, // Set background color
+                ForeColor = Color.White, // Set text color
+                Font = new Font("Arial", 10, FontStyle.Bold) // Optional: Set font style
+            };
+            testButton.Click += TestButton_Click;
+
+            // Add the layout panel and buttons to the form
+            var mainPanel = new Panel { Dock = DockStyle.Fill };
+            mainPanel.Controls.Add(layoutPanel);
+
+            this.Controls.Add(mainPanel);
+            this.Controls.Add(testButton);
+            this.Controls.Add(saveButton);
+
             this.Text = "Alert Details";
-            this.Size = new System.Drawing.Size(400, 500);
+            this.Size = new System.Drawing.Size(600, 400); // Set initial size
+        }
 
-            var topicLabel = new Label { Text = "Topic:", Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-            this.topicTextBox = new TextBox { PlaceholderText = "Enter Topic", Dock = DockStyle.Top, Height = 30 };
-
-            var timeLabel = new Label { Text = "Time:", Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-            this.timePicker = new DateTimePicker { Format = DateTimePickerFormat.Time, Dock = DockStyle.Top, Height = 30 };
-
-            var minutesLabel = new Label { Text = "Minutes:", Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-            this.minutesTextBox = new TextBox { PlaceholderText = "Enter Minutes", Dock = DockStyle.Top, Height = 30 };
-
-            var keywordsLabel = new Label { Text = "Keywords:", Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-            this.keywordsTextArea = new TextBox { PlaceholderText = "Enter Keywords", Multiline = true, Height = 60, Dock = DockStyle.Top };
-
-            var urlLabel = new Label { Text = "URL:", Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-            this.urlTextBox = new TextBox { PlaceholderText = "Enter URL", Dock = DockStyle.Top, Height = 30 };
-
-            var methodLabel = new Label { Text = "Method:", Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-            var radioPanel = new Panel { Dock = DockStyle.Top, Height = 40 };
-            this.getRadioButton = new RadioButton { Text = "GET", Dock = DockStyle.Left, Width = 60 };
-            this.postRadioButton = new RadioButton { Text = "POST", Dock = DockStyle.Left, Width = 70 }; // Increased width to fit "POST"
-            radioPanel.Controls.Add(this.getRadioButton);
-            radioPanel.Controls.Add(this.postRadioButton);
-
-            var bodyLabel = new Label { Text = "Body:", Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-            this.bodyTextArea = new TextBox { PlaceholderText = "Enter Body", Multiline = true, Height = 100, Dock = DockStyle.Top };
-
-            this.saveButton = new Button { Text = "Save", Dock = DockStyle.Bottom, Height = 40 };
-            this.saveButton.Click += SaveButton_Click;
-
-            this.Controls.Add(this.saveButton);
-            this.Controls.Add(this.bodyTextArea);
-            this.Controls.Add(bodyLabel);
-            this.Controls.Add(radioPanel);
-            this.Controls.Add(methodLabel);
-            this.Controls.Add(this.urlTextBox);
-            this.Controls.Add(urlLabel);
-            this.Controls.Add(this.keywordsTextArea);
-            this.Controls.Add(keywordsLabel);
-            this.Controls.Add(this.minutesTextBox);
-            this.Controls.Add(minutesLabel);
-            this.Controls.Add(this.timePicker);
-            this.Controls.Add(timeLabel);
-            this.Controls.Add(this.topicTextBox);
-            this.Controls.Add(topicLabel);
+        // Helper method to add a field to the layout
+        private void AddFieldToLayout(string labelText, Control control)
+        {
+            var label = new Label
+            {
+                Text = labelText,
+                TextAlign = ContentAlignment.MiddleRight,
+                Dock = DockStyle.Fill
+            };
+            layoutPanel.Controls.Add(label);
+            layoutPanel.Controls.Add(control);
         }
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
             this.Topic = topicTextBox.Text;
-            this.Time = timePicker.Value.ToString("HH:mm");
+            this.Time = timeTextBox.Text;
             this.Minutes = minutesTextBox.Text;
-            this.Keywords = keywordsTextArea.Text;
+            this.Keywords = keywordsTextBox.Text;
             this.URL = urlTextBox.Text;
-            this.Method = getRadioButton.Checked ? "GET" : postRadioButton.Checked ? "POST" : string.Empty;
-            this.Body = bodyTextArea.Text;
+            this.Method = methodComboBox.Text;
+            this.Body = bodyTextBox.Text;
+            this.Enabled = enabledCheckBox.Checked ? "Yes" : "No";
+            this.LastTriggered = lastTriggeredPicker.Value.ToString("yyyy-MM-dd HH:mm:ss");
 
             this.DialogResult = DialogResult.OK;
             this.Close();
+        }
+
+        private async void TestButton_Click(object sender, EventArgs e)
+        {
+            var url = urlTextBox.Text; // Get the URL from the text box
+            await UrlTester.TestUrlAsync(url); // Call the centralized logic
         }
     }
 }
