@@ -2,7 +2,7 @@ using System;
 using System.Windows.Forms;
 using WindowsTaskbarApp.Jobs;
 
-namespace WindowsTaskbarApp.Forms
+namespace WindowsTaskbarApp.Forms.Jobs
 {
     public partial class BackgroundJobsForm : Form
     {
