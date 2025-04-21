@@ -4,6 +4,9 @@ using System.IO; // Add this for Path and File
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Collections.Generic; // Add this for List
+using System.Text.RegularExpressions; // Add this for Regex
+using HtmlAgilityPack; // Add this for HTML parsing
 
 namespace WindowsTaskbarApp.Utils
 {
@@ -87,25 +90,10 @@ namespace WindowsTaskbarApp.Utils
 
             try
             {
-                // Encode the URL to handle special characters
-                var encodedUrl = Uri.EscapeUriString(url);
-
-                using var httpClient = new HttpClient();
-                var htmlContent = await httpClient.GetStringAsync(encodedUrl);
-
-                // Highlight keywords in the HTML content
-                foreach (var keyword in keywords)
-                {
-                    if (!string.IsNullOrWhiteSpace(keyword))
-                    {
-                        htmlContent = htmlContent.Replace(keyword, $"<mark>{keyword}</mark>", StringComparison.OrdinalIgnoreCase);
-                    }
-                }
-
-                // Create a new form with a WebView2 control to render the modified HTML
+                // Create a new form with a WebView2 control
                 var browserForm = new Form
                 {
-                    Text = $"HTML Viewer - {url}",
+                    Text = $"HTML Viewer - Extracted Parts",
                     Size = new System.Drawing.Size(800, 600)
                 };
 
@@ -115,20 +103,49 @@ namespace WindowsTaskbarApp.Utils
                 };
 
                 await webView.EnsureCoreWebView2Async();
+                webView.CoreWebView2.Navigate(url);
 
-                // Save the modified HTML content to a temporary file
-                var tempFilePath = Path.Combine(Path.GetTempPath(), "highlighted_content.html");
-                await File.WriteAllTextAsync(tempFilePath, htmlContent);
+                browserForm.Controls.Add(webView);
+                browserForm.Show();
+
+                // Wait for the page to load
+                await Task.Delay(5000); // Adjust the delay as needed
+
+                // Get the rendered HTML
+                var renderedHtml = await webView.CoreWebView2.ExecuteScriptAsync("document.documentElement.outerHTML");
+                renderedHtml = System.Text.Json.JsonSerializer.Deserialize<string>(renderedHtml); // Decode the JSON string
+
+                // Load the rendered HTML into HtmlAgilityPack
+                var htmlDoc = new HtmlAgilityPack.HtmlDocument();
+                htmlDoc.LoadHtml(renderedHtml);
+
+                // Extract the parent nodes containing the matching keywords
+                var extractedHtml = "<html><body>";
+                foreach (var keyword in keywords)
+                {
+                    if (!string.IsNullOrWhiteSpace(keyword))
+                    {
+                        var nodes = htmlDoc.DocumentNode.SelectNodes($"//*[contains(text(), '{keyword}')]");
+                        if (nodes != null)
+                        {
+                            foreach (var node in nodes)
+                            {
+                                extractedHtml += node.OuterHtml + "<hr>";
+                            }
+                        }
+                    }
+                }
+                extractedHtml += "</body></html>";
+
+                // Save the extracted HTML content to a temporary file
+                var tempFilePath = Path.Combine(Path.GetTempPath(), "extracted_content.html");
+                await File.WriteAllTextAsync(tempFilePath, extractedHtml);
 
                 // Navigate to the temporary file
                 webView.CoreWebView2.Navigate(tempFilePath);
-
-                browserForm.Controls.Add(webView);
-                browserForm.ShowDialog(); // Use ShowDialog to ensure the window opens
             }
             catch (Exception ex)
             {
-                // Create a detailed error message with a "Copy to Clipboard" option
                 var errorMessage = $"Error testing URL ({url}): {ex.Message}\n\nStack Trace:\n{ex.StackTrace}";
                 var result = MessageBox.Show(
                     $"{errorMessage}\n\nDo you want to copy this error to the clipboard?",
@@ -139,7 +156,7 @@ namespace WindowsTaskbarApp.Utils
 
                 if (result == DialogResult.Yes)
                 {
-                    Clipboard.SetText(errorMessage); // Copy the error message to the clipboard
+                    Clipboard.SetText(errorMessage);
                 }
             }
         }
