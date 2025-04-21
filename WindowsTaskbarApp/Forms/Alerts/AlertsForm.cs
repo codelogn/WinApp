@@ -135,6 +135,15 @@ namespace WindowsTaskbarApp.Forms.Alerts
             };
             alertsGridView.Columns.Add(testButtonColumn);
 
+            var testWithKeywordsButtonColumn = new DataGridViewButtonColumn
+            {
+                Name = "TestWithKeywords",
+                HeaderText = "Test with Keywords",
+                Text = "Test with Keywords",
+                UseColumnTextForButtonValue = true
+            };
+            alertsGridView.Columns.Add(testWithKeywordsButtonColumn);
+
             // Add the CellPainting event handler
             alertsGridView.CellPainting += AlertsGridView_CellPainting;
 
@@ -223,6 +232,23 @@ namespace WindowsTaskbarApp.Forms.Alerts
                     }
 
                     await UrlTester.TestUrlAsync(url); // Call the shared utility method
+                }
+
+                // Handle the "TestWithKeywords" button click
+                else if (alertsGridView.Columns[e.ColumnIndex] is DataGridViewButtonColumn testWithKeywordsColumn &&
+                         testWithKeywordsColumn.Name == "TestWithKeywords")
+                {
+                    var url = alertsGridView.Rows[e.RowIndex].Cells["URL"].Value?.ToString();
+                    var keywords = alertsGridView.Rows[e.RowIndex].Cells["Keywords"].Value?.ToString();
+
+                    if (!string.IsNullOrEmpty(url) && !string.IsNullOrEmpty(keywords))
+                    {
+                        await UrlTester.TestUrlWithKeywordsAsync(url, keywords.Split(',')); // Await the method
+                    }
+                    else
+                    {
+                        MessageBox.Show("URL or Keywords are missing.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 }
 
                 // Handle the "Edit" button click
