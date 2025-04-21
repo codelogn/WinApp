@@ -84,6 +84,7 @@ namespace WindowsTaskbarApp.Forms.Alerts
         private TextBox bodyTextBox;
         private Button saveButton;
         private Button testButton;
+        private Button testWithKeywordsButton;
         private CheckBox enabledCheckBox;
         private DateTimePicker lastTriggeredPicker;
         private TableLayoutPanel layoutPanel;
@@ -114,7 +115,11 @@ namespace WindowsTaskbarApp.Forms.Alerts
             AddFieldToLayout("Time:", timeTextBox = new TextBox { Dock = DockStyle.Fill });
             AddFieldToLayout("Minutes:", minutesTextBox = new TextBox { Dock = DockStyle.Fill });
             AddFieldToLayout("Keywords:", keywordsTextBox = new TextBox { Dock = DockStyle.Fill });
-            AddFieldToLayout("URL:", urlTextBox = new TextBox { Dock = DockStyle.Fill });
+            AddFieldToLayout("URL:", urlTextBox = new TextBox
+            {
+                Dock = DockStyle.Fill,
+                MaxLength = 2000 // Set the maximum character limit to 2000
+            });
             AddFieldToLayout("Method:", methodComboBox = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList });
             methodComboBox.Items.AddRange(new string[] { "GET", "POST" });
             AddFieldToLayout("Body:", bodyTextBox = new TextBox { Dock = DockStyle.Fill, Multiline = true, Height = 100 });
@@ -147,6 +152,18 @@ namespace WindowsTaskbarApp.Forms.Alerts
                 Font = new Font("Arial", 10, FontStyle.Bold) // Optional: Set font style
             };
             testButton.Click += TestButton_Click;
+
+            // Create Test with Keywords button
+            testWithKeywordsButton = new Button
+            {
+                Text = "Test with Keywords",
+                Dock = DockStyle.Top,
+                BackColor = Color.DarkGreen,
+                ForeColor = Color.White,
+                Font = new Font("Arial", 10, FontStyle.Bold)
+            };
+            testWithKeywordsButton.Click += TestWithKeywordsButton_Click;
+            layoutPanel.Controls.Add(testWithKeywordsButton, 1, layoutPanel.RowCount++);
 
             // Add the layout panel and buttons to the form
             var mainPanel = new Panel { Dock = DockStyle.Fill };
@@ -211,7 +228,46 @@ namespace WindowsTaskbarApp.Forms.Alerts
         private async void TestButton_Click(object sender, EventArgs e)
         {
             var url = urlTextBox.Text; // Get the URL from the text box
-            await UrlTester.TestUrlAsync(url); // Call the centralized logic
+
+            if (url.Length > 2000)
+            {
+                MessageBox.Show("The URL exceeds the maximum allowed length of 2000 characters.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uriResult) || 
+                (uriResult.Scheme != Uri.UriSchemeHttp && uriResult.Scheme != Uri.UriSchemeHttps))
+            {
+                MessageBox.Show("The URL is not valid. Please enter a valid HTTP or HTTPS URL.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            try
+            {
+                var encodedUrl = url; // Use the URL as-is
+                Console.WriteLine($"Testing URL: {encodedUrl}");
+                await UrlTester.TestUrlAsync(encodedUrl); // Use the URL as-is
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                MessageBox.Show($"Error testing URL({url}): {ex.Message}\n\nStack Trace:\n{ex.StackTrace}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async void TestWithKeywordsButton_Click(object sender, EventArgs e)
+        {
+            var url = urlTextBox.Text;
+            var keywords = keywordsTextBox.Text;
+
+            if (!string.IsNullOrEmpty(url) && !string.IsNullOrEmpty(keywords))
+            {
+                await UrlTester.TestUrlWithKeywordsAsync(url, keywords.Split(','));
+            }
+            else
+            {
+                MessageBox.Show("URL or Keywords are missing.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Data.SQLite;
+using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -43,6 +44,23 @@ namespace WindowsTaskbarApp.Utils
 
             // Execute the command
             await Task.Run(() => command.ExecuteNonQuery());
+        }
+
+        public static async Task TestUrlAsync(string url)
+        {
+            using (var httpClient = new HttpClient())
+            {
+                try
+                {
+                    var response = await httpClient.GetAsync(url);
+                    response.EnsureSuccessStatusCode(); // Throws if the status code is not 2xx
+                    MessageBox.Show("URL tested successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Error testing URL: {ex.Message}");
+                }
+            }
         }
     }
 }
