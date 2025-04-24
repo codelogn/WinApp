@@ -17,7 +17,7 @@ namespace WindowsTaskbarApp.Forms.Alerts
         }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public string Time
+        public string LastUpdatedTime
         {
             get => timeTextBox.Text;
             set => timeTextBox.Text = value;
@@ -73,6 +73,13 @@ namespace WindowsTaskbarApp.Forms.Alerts
         }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public string ResponseType
+        {
+            get => responseTypeComboBox.SelectedItem?.ToString();
+            set => responseTypeComboBox.SelectedItem = value;
+        }
+
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int? Id { get; set; } // Nullable to handle new records
 
         private TextBox topicTextBox;
@@ -88,10 +95,25 @@ namespace WindowsTaskbarApp.Forms.Alerts
         private CheckBox enabledCheckBox;
         private DateTimePicker lastTriggeredPicker;
         private TableLayoutPanel layoutPanel;
+        private ComboBox responseTypeComboBox;
+        private SQLiteConnection connection;
 
-        public AlertDetailsForm()
+        private bool isSaving = false;
+
+        public AlertDetailsForm(SQLiteConnection dbConnection)
         {
             InitializeComponent();
+            InitializeResponseTypeRadioButtons();
+            connection = dbConnection; // Assign the passed connection to the field
+        }
+
+        public AlertDetailsForm(SQLiteConnection dbConnection, int? selectedId = null, string selectedTopic = null)
+        {
+            InitializeComponent();
+            InitializeResponseTypeRadioButtons();
+            connection = dbConnection; // Assign the passed connection to the field
+            Id = selectedId; // Assign the selected ID
+            Topic = selectedTopic; // Assign the selected topic
         }
 
         private void InitializeComponent()
@@ -130,6 +152,12 @@ namespace WindowsTaskbarApp.Forms.Alerts
                 Format = DateTimePickerFormat.Custom,
                 CustomFormat = "yyyy-MM-dd HH:mm:ss"
             });
+            AddFieldToLayout("Response Type:", responseTypeComboBox = new ComboBox
+            {
+                Dock = DockStyle.Fill,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            });
+            responseTypeComboBox.Items.AddRange(new string[] { "JSON", "XML", "HTML" });
 
             // Create Save button
             saveButton = new Button
@@ -177,6 +205,45 @@ namespace WindowsTaskbarApp.Forms.Alerts
             this.Size = new System.Drawing.Size(600, 400); // Set initial size
         }
 
+        private void InitializeResponseTypeRadioButtons()
+        {
+            // Create a GroupBox to contain the radio buttons
+            var responseTypeGroupBox = new GroupBox
+            {
+                Text = "Response Type",
+                Location = new System.Drawing.Point(20, 220), // Adjust location as needed
+                Size = new System.Drawing.Size(200, 100) // Adjust size as needed
+            };
+
+            // Create the radio buttons
+            var jsonRadioButton = new RadioButton
+            {
+                Text = "JSON",
+                Location = new System.Drawing.Point(10, 20),
+                Checked = true // Default selection
+            };
+
+            var xmlRadioButton = new RadioButton
+            {
+                Text = "XML",
+                Location = new System.Drawing.Point(10, 40)
+            };
+
+            var htmlRadioButton = new RadioButton
+            {
+                Text = "HTML",
+                Location = new System.Drawing.Point(10, 60)
+            };
+
+            // Add the radio buttons to the GroupBox
+            responseTypeGroupBox.Controls.Add(jsonRadioButton);
+            responseTypeGroupBox.Controls.Add(xmlRadioButton);
+            responseTypeGroupBox.Controls.Add(htmlRadioButton);
+
+            // Add the GroupBox to the form
+            this.Controls.Add(responseTypeGroupBox);
+        }
+
         // Helper method to add a field to the layout
         private void AddFieldToLayout(string labelText, Control control)
         {
@@ -192,32 +259,32 @@ namespace WindowsTaskbarApp.Forms.Alerts
 
         private async void SaveButton_Click(object sender, EventArgs e)
         {
+            if (connection == null)
+            {
+                MessageBox.Show("Database connection is not initialized.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
             try
             {
-                using (var connection = new SQLiteConnection("Data Source=alerts.db;Version=3;"))
-                {
-                    connection.Open(); // Ensure the connection is open
+                await Alert.SaveAlertAsync(
+                    connection: connection, // Use the connection field
+                    topic: Topic,
+                    lastUpdatedTime: LastUpdatedTime,
+                    minutes: Minutes,
+                    keywords: Keywords,
+                    url: URL,
+                    method: Method,
+                    body: Body,
+                    enabled: Enabled,
+                    lastTriggered: LastTriggered,
+                    responseType: ResponseType,
+                    id: Id
+                );
 
-                    await Alert.SaveAlertAsync(
-                        connection: connection,
-                        topic: topicTextBox.Text,
-                        time: timeTextBox.Text,
-                        minutes: minutesTextBox.Text,
-                        keywords: keywordsTextBox.Text,
-                        url: urlTextBox.Text,
-                        method: methodComboBox.Text,
-                        body: bodyTextBox.Text,
-                        enabled: enabledCheckBox.Checked ? "Yes" : "No",
-                        lastTriggered: lastTriggeredPicker.Value.ToString("yyyy-MM-dd HH:mm:ss"),
-                        id: Id // Pass the Id if it exists
-                    );
-
-                    MessageBox.Show("Alert saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                    // Set DialogResult to OK to indicate success
-                    this.DialogResult = DialogResult.OK;
-                    this.Close();
-                }
+                MessageBox.Show("Alert saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                this.DialogResult = DialogResult.OK;
+                this.Close();
             }
             catch (Exception ex)
             {
