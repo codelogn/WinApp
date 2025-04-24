@@ -6,7 +6,7 @@ using Microsoft.Web.WebView2.WinForms;
 
 namespace WindowsTaskbarApp.Forms
 {
-    public class Form1 : Form
+    public class OpenWeb : Form
     {
         private TextBox urlTextBox;
         private TextBox htmlTagTextBox;
@@ -14,7 +14,7 @@ namespace WindowsTaskbarApp.Forms
         private DataGridView resultsGrid;
         private WebView2 htmlViewer;
 
-        public Form1()
+        public OpenWeb()
         {
             // Initialize the form
             this.Text = "HTML Renderer";

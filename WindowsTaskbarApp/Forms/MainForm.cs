@@ -109,7 +109,7 @@ namespace WindowsTaskbarApp.Forms
         private void OpenWeb(object sender, EventArgs e)
         {
             // Create and show an instance of Form1
-            var form1 = new Form1();
+            var form1 = new OpenWeb();
             form1.Show();
         }
 

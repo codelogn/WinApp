@@ -88,48 +88,67 @@ namespace WindowsTaskbarApp.Utils
                 return;
             }
 
+            if (keywords == null || keywords.Length == 0)
+            {
+                MessageBox.Show("No keywords provided.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
             try
             {
                 // Create a new form with a WebView2 control
                 var browserForm = new Form
                 {
-                    Text = $"HTML Viewer - Extracted Parts",
+                    Text = "HTML Viewer - Matched Content",
                     Size = new System.Drawing.Size(800, 600)
                 };
 
-                var webView = new Microsoft.Web.WebView2.WinForms.WebView2
+                // Add a "Loading" label
+                var loadingLabel = new Label
                 {
-                    Dock = DockStyle.Fill
+                    Text = "Loading...",
+                    Dock = DockStyle.Fill,
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    Font = new Font("Arial", 16, FontStyle.Bold)
                 };
-
-                await webView.EnsureCoreWebView2Async();
-                webView.CoreWebView2.Navigate(url);
-
-                browserForm.Controls.Add(webView);
+                browserForm.Controls.Add(loadingLabel);
                 browserForm.Show();
 
-                // Wait for the page to load
-                await Task.Delay(5000); // Adjust the delay as needed
+                // Fetch the HTML content from the URL
+                using var httpClient = new HttpClient();
+                var htmlContent = await httpClient.GetStringAsync(url);
 
-                // Get the rendered HTML
-                var renderedHtml = await webView.CoreWebView2.ExecuteScriptAsync("document.documentElement.outerHTML");
-                renderedHtml = System.Text.Json.JsonSerializer.Deserialize<string>(renderedHtml); // Decode the JSON string
-
-                // Load the rendered HTML into HtmlAgilityPack
+                // Load the HTML content into HtmlAgilityPack
                 var htmlDoc = new HtmlAgilityPack.HtmlDocument();
-                htmlDoc.LoadHtml(renderedHtml);
+                htmlDoc.LoadHtml(htmlContent);
 
-                // Extract the parent nodes containing the matching keywords
+                // Extract nodes that match any of the keywords
                 var extractedHtml = "<html><body>";
                 foreach (var keyword in keywords)
                 {
                     if (!string.IsNullOrWhiteSpace(keyword))
                     {
-                        var nodes = htmlDoc.DocumentNode.SelectNodes($"//*[contains(text(), '{keyword}')]");
+                        var nodes = htmlDoc.DocumentNode.SelectNodes($"//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{keyword.ToLower()}')]");
                         if (nodes != null)
                         {
                             foreach (var node in nodes)
                             {
+                                // Fix anchor links to include absolute URLs
+                                var anchorNodes = node.SelectNodes(".//a[@href]");
+                                if (anchorNodes != null)
+                                {
+                                    foreach (var anchor in anchorNodes)
+                                    {
+                                        var href = anchor.GetAttributeValue("href", string.Empty);
+                                        if (!string.IsNullOrEmpty(href) && !Uri.IsWellFormedUriString(href, UriKind.Absolute))
+                                        {
+                                            var baseUri = new Uri(url);
+                                            var absoluteUri = new Uri(baseUri, href);
+                                            anchor.SetAttributeValue("href", absoluteUri.ToString());
+                                        }
+                                    }
+                                }
+
                                 extractedHtml += node.OuterHtml + "<hr>";
                             }
                         }
@@ -137,12 +156,42 @@ namespace WindowsTaskbarApp.Utils
                 }
                 extractedHtml += "</body></html>";
 
+                // If no matches are found, show a message and return
+                if (extractedHtml == "<html><body></body></html>")
+                {
+                    MessageBox.Show("No matching content found for the provided keywords.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    browserForm.Close();
+                    return;
+                }
+
                 // Save the extracted HTML content to a temporary file
-                var tempFilePath = Path.Combine(Path.GetTempPath(), "extracted_content.html");
+                var tempFilePath = Path.Combine(Path.GetTempPath(), "matched_content.html");
                 await File.WriteAllTextAsync(tempFilePath, extractedHtml);
 
-                // Navigate to the temporary file
-                webView.CoreWebView2.Navigate(tempFilePath);
+                // Initialize the WebView2 control
+                var webView = new Microsoft.Web.WebView2.WinForms.WebView2
+                {
+                    Dock = DockStyle.Fill
+                };
+                await webView.EnsureCoreWebView2Async();
+
+                // Handle navigation to open links in the default browser
+                webView.CoreWebView2.NewWindowRequested += (sender, e) =>
+                {
+                    e.Handled = true;
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = e.Uri,
+                        UseShellExecute = true
+                    });
+                };
+
+                // Remove the "Loading" label and add the WebView2 control
+                browserForm.Controls.Clear();
+                browserForm.Controls.Add(webView);
+
+                // Navigate the WebView2 control to the temporary file
+                webView.CoreWebView2.Navigate($"file:///{tempFilePath.Replace("\\", "/")}");
             }
             catch (Exception ex)
             {
