@@ -1,12 +1,10 @@
 using System;
 using System.Data;
 using System.Data.SQLite;
-using System.Net.Http;
-using System.Windows.Forms;
 using System.Drawing;
-using WindowsTaskbarApp.Utils; 
 using System.Threading.Tasks;
-using System.IO;
+using System.Windows.Forms;
+using WindowsTaskbarApp.Utils;
 
 namespace WindowsTaskbarApp.Forms.Alerts
 {
@@ -23,7 +21,6 @@ namespace WindowsTaskbarApp.Forms.Alerts
             {
                 await InitializeDatabaseAsync();
                 await LoadAlertsAsync();
-                InitializeResponseTypeRadioButtons();
             };
         }
 
@@ -47,7 +44,7 @@ namespace WindowsTaskbarApp.Forms.Alerts
                 Name = "Id",
                 HeaderText = "Id",
                 DataPropertyName = "Id",
-                Visible = true // Make the Id column visible
+                Visible = false
             });
 
             alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
@@ -61,7 +58,7 @@ namespace WindowsTaskbarApp.Forms.Alerts
             {
                 Name = "LastUpdatedTime",
                 HeaderText = "Last Updated Time",
-                DataPropertyName = "LastUpdatedTime" // Ensure this matches the database column name
+                DataPropertyName = "LastUpdatedTime"
             });
 
             alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
@@ -80,6 +77,13 @@ namespace WindowsTaskbarApp.Forms.Alerts
 
             alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
             {
+                Name = "Query",
+                HeaderText = "Query",
+                DataPropertyName = "Query"
+            });
+
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
                 Name = "URL",
                 HeaderText = "URL",
                 DataPropertyName = "URL"
@@ -87,16 +91,23 @@ namespace WindowsTaskbarApp.Forms.Alerts
 
             alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "Method",
-                HeaderText = "Method",
-                DataPropertyName = "Method"
+                Name = "HTTPMethod",
+                HeaderText = "HTTP Method",
+                DataPropertyName = "HTTPMethod" // Ensure this matches the database column name
             });
 
             alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "Body",
-                HeaderText = "Body",
-                DataPropertyName = "Body"
+                Name = "HTTPHeader",
+                HeaderText = "HTTP Header",
+                DataPropertyName = "HTTPHeader"
+            });
+
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "HTTPBody",
+                HeaderText = "HTTP Body",
+                DataPropertyName = "HTTPBody"
             });
 
             alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
@@ -108,16 +119,16 @@ namespace WindowsTaskbarApp.Forms.Alerts
 
             alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "LastTriggered",
-                HeaderText = "Last Triggered",
-                DataPropertyName = "LastTriggered"
+                Name = "ResponseType",
+                HeaderText = "Response Type",
+                DataPropertyName = "ResponseType"
             });
 
             alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "ResponseType",
-                HeaderText = "Response Type",
-                DataPropertyName = "ResponseType" // Ensure this matches the database column name
+                Name = "ExecutionType",
+                HeaderText = "Execution Type",
+                DataPropertyName = "ExecutionType"
             });
 
             // Add button columns
@@ -148,43 +159,27 @@ namespace WindowsTaskbarApp.Forms.Alerts
             };
             alertsGridView.Columns.Add(testButtonColumn);
 
-            var testWithKeywordsButtonColumn = new DataGridViewButtonColumn
-            {
-                Name = "TestWithKeywords",
-                HeaderText = "Test with Keywords",
-                Text = "Test with Keywords",
-                UseColumnTextForButtonValue = true
-            };
-            alertsGridView.Columns.Add(testWithKeywordsButtonColumn);
-
-            // Add the CellPainting event handler
-            alertsGridView.CellPainting += AlertsGridView_CellPainting;
-
-            // Add the CellContentClick event handler
             alertsGridView.CellContentClick += AlertsGridView_CellContentClick;
 
             this.Controls.Add(this.alertsGridView);
             this.Controls.Add(this.addButton);
 
             this.Text = "Manage Alerts";
-            this.Size = new System.Drawing.Size(600, 400);
+            this.Size = new System.Drawing.Size(800, 600);
         }
 
         private async Task InitializeDatabaseAsync()
         {
             var dbPath = "alerts.db";
 
-            // Create the database file if it doesn't exist
-            if (!File.Exists(dbPath))
+            if (!System.IO.File.Exists(dbPath))
             {
                 SQLiteConnection.CreateFile(dbPath);
             }
 
-            // Open the database connection
             connection = new SQLiteConnection($"Data Source={dbPath};Version=3;");
             await connection.OpenAsync();
 
-            // Create the schema
             await InitializeDatabaseSchemaAsync(connection);
         }
 
@@ -198,15 +193,18 @@ namespace WindowsTaskbarApp.Forms.Alerts
                 CREATE TABLE IF NOT EXISTS Alerts (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
                     Topic TEXT NOT NULL,
-                    LastUpdatedTime TEXT NOT NULL, -- Replacing the old 'Time' column
+                    LastUpdatedTime TEXT NOT NULL,
                     Minutes TEXT NOT NULL,
                     Keywords TEXT,
+                    Query TEXT,
                     URL TEXT NOT NULL,
-                    Method TEXT NOT NULL,
-                    Body TEXT,
+                    HTTPMethod TEXT NOT NULL, -- Renamed
+                    HTTPBody TEXT,            -- Renamed
                     Enabled TEXT NOT NULL,
-                    LastTriggered TEXT,
-                    ResponseType TEXT DEFAULT 'JSON' -- Default value for ResponseType
+                    ResponseType TEXT DEFAULT 'JSON',
+                    ExecutionType TEXT DEFAULT 'Win Alert',
+                    HTTPHeader TEXT,          -- Renamed
+                    LastTriggered TEXT
                 );
             ";
 
@@ -233,235 +231,82 @@ namespace WindowsTaskbarApp.Forms.Alerts
         {
             using (var detailsForm = new AlertDetailsForm(connection))
             {
-                if (detailsForm.ShowDialog() == DialogResult.OK)
+                // Subscribe to the AlertSaved event
+                detailsForm.AlertSaved += async (s, args) =>
                 {
-                    await LoadAlertsAsync(); // Refresh the alerts after saving
-                }
-            }
-        }
+                    await LoadAlertsAsync(); // Refresh the grid view
+                };
 
-        private async void EditButton_Click(object sender, EventArgs e)
-        {
-            if (alertsGridView.SelectedRows.Count > 0)
-            {
-                var selectedId = Convert.ToInt32(alertsGridView.SelectedRows[0].Cells["Id"].Value);
-                var selectedTopic = alertsGridView.SelectedRows[0].Cells["Topic"].Value?.ToString();
-
-                using (var detailsForm = new AlertDetailsForm(connection, selectedId, selectedTopic))
-                {
-                    if (detailsForm.ShowDialog() == DialogResult.OK)
-                    {
-                        await LoadAlertsAsync(); // Refresh the grid after saving
-                    }
-                }
+                detailsForm.ShowDialog();
             }
         }
 
         private async void AlertsGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex >= 0) // Ensure a valid row is clicked
+            if (e.RowIndex < 0) return;
+
+            var columnName = alertsGridView.Columns[e.ColumnIndex].Name;
+
+            if (columnName == "Edit")
             {
-                var idCell = alertsGridView.Rows[e.RowIndex].Cells["Id"];
-                if (idCell == null || idCell.Value == null)
+                using (var detailsForm = new AlertDetailsForm(connection))
                 {
-                    MessageBox.Show("The 'Id' column is missing or has no value for this row.");
-                    return;
+                    // Populate fields
+                    detailsForm.Id = int.TryParse(alertsGridView.Rows[e.RowIndex].Cells["Id"].Value?.ToString(), out var parsedId) ? parsedId : (int?)null;
+                    detailsForm.Topic = alertsGridView.Rows[e.RowIndex].Cells["Topic"].Value?.ToString();
+                    detailsForm.LastUpdatedTime = alertsGridView.Rows[e.RowIndex].Cells["LastUpdatedTime"].Value?.ToString();
+                    detailsForm.Minutes = alertsGridView.Rows[e.RowIndex].Cells["Minutes"].Value?.ToString();
+                    detailsForm.Keywords = alertsGridView.Rows[e.RowIndex].Cells["Keywords"].Value?.ToString();
+                    detailsForm.Query = alertsGridView.Rows[e.RowIndex].Cells["Query"].Value?.ToString();
+                    detailsForm.URL = alertsGridView.Rows[e.RowIndex].Cells["URL"].Value?.ToString();
+                    detailsForm.HTTPMethod = alertsGridView.Rows[e.RowIndex].Cells["HTTPMethod"].Value?.ToString();
+                    detailsForm.HTTPBody = alertsGridView.Rows[e.RowIndex].Cells["HTTPBody"].Value?.ToString();
+                    detailsForm.Enabled = alertsGridView.Rows[e.RowIndex].Cells["Enabled"].Value?.ToString();
+                    detailsForm.ResponseType = alertsGridView.Rows[e.RowIndex].Cells["ResponseType"].Value?.ToString();
+                    detailsForm.ExecutionType = alertsGridView.Rows[e.RowIndex].Cells["ExecutionType"].Value?.ToString();
+                    detailsForm.HTTPHeader = alertsGridView.Rows[e.RowIndex].Cells["HTTPHeader"].Value?.ToString();
+
+                    // Subscribe to the AlertSaved event
+                    detailsForm.AlertSaved += async (s, args) =>
+                    {
+                        await LoadAlertsAsync(); // Refresh the grid view
+                    };
+
+                    detailsForm.ShowDialog();
                 }
-
-                var id = Convert.ToInt32(idCell.Value);
-
-                // Handle the "Test" button click
-                if (alertsGridView.Columns[e.ColumnIndex] is DataGridViewButtonColumn testColumn &&
-                    testColumn.Name == "Test")
+            }
+            else if (columnName == "Delete")
+            {
+                // Delete the selected alert
+                var id = alertsGridView.Rows[e.RowIndex].Cells["Id"].Value?.ToString();
+                if (MessageBox.Show("Are you sure you want to delete this alert?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                 {
-                    var url = alertsGridView.Rows[e.RowIndex].Cells["URL"].Value?.ToString();
-                    if (string.IsNullOrEmpty(url))
+                    try
                     {
-                        MessageBox.Show("URL is empty.");
-                        return;
-                    }
-
-                    await UrlTester.TestUrlAsync(url); // Call the shared utility method
-                }
-
-                // Handle the "TestWithKeywords" button click
-                else if (alertsGridView.Columns[e.ColumnIndex] is DataGridViewButtonColumn testWithKeywordsColumn &&
-                         testWithKeywordsColumn.Name == "TestWithKeywords")
-                {
-                    var url = alertsGridView.Rows[e.RowIndex].Cells["URL"].Value?.ToString();
-                    var keywords = alertsGridView.Rows[e.RowIndex].Cells["Keywords"].Value?.ToString();
-
-                    if (!string.IsNullOrEmpty(url) && !string.IsNullOrEmpty(keywords))
-                    {
-                        await UrlTester.TestUrlWithKeywordsAsync(url, keywords.Split(',')); // Await the method
-                    }
-                    else
-                    {
-                        MessageBox.Show("URL or Keywords are missing.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-
-                // Handle the "Edit" button click
-                else if (alertsGridView.Columns[e.ColumnIndex] is DataGridViewButtonColumn editColumn &&
-                         editColumn.Name == "Edit")
-                {
-                    using (var detailsForm = new AlertDetailsForm(connection))
-                    {
-                        // Pass the selected record's data to the form
-                        detailsForm.Id = Convert.ToInt32(alertsGridView.Rows[e.RowIndex].Cells["Id"].Value);
-                        detailsForm.Topic = alertsGridView.Rows[e.RowIndex].Cells["Topic"].Value?.ToString();
-                        detailsForm.LastUpdatedTime = alertsGridView.Rows[e.RowIndex].Cells["LastUpdatedTime"].Value?.ToString(); // Fixed here
-                        detailsForm.Minutes = alertsGridView.Rows[e.RowIndex].Cells["Minutes"].Value?.ToString();
-                        detailsForm.Keywords = alertsGridView.Rows[e.RowIndex].Cells["Keywords"].Value?.ToString();
-                        detailsForm.URL = alertsGridView.Rows[e.RowIndex].Cells["URL"].Value?.ToString();
-                        detailsForm.Method = alertsGridView.Rows[e.RowIndex].Cells["Method"].Value?.ToString();
-                        detailsForm.Body = alertsGridView.Rows[e.RowIndex].Cells["Body"].Value?.ToString();
-                        detailsForm.Enabled = alertsGridView.Rows[e.RowIndex].Cells["Enabled"].Value?.ToString();
-                        detailsForm.LastTriggered = alertsGridView.Rows[e.RowIndex].Cells["LastTriggered"].Value?.ToString();
-
-                        if (detailsForm.ShowDialog() == DialogResult.OK)
+                        using (var command = connection.CreateCommand())
                         {
-                            var command = connection.CreateCommand();
-                            command.CommandText = @"
-                                UPDATE Alerts
-                                SET Topic = @topic,
-                                    LastUpdatedTime = @lastUpdatedTime,
-                                    Minutes = @minutes,
-                                    Keywords = @keywords,
-                                    URL = @url,
-                                    Method = @method,
-                                    Body = @body,
-                                    Enabled = @enabled,
-                                    ResponseType = @responseType
-                                WHERE Id = @id;
-                            ";
-
-                            command.Parameters.AddWithValue("@id", detailsForm.Id);
-                            command.Parameters.AddWithValue("@topic", detailsForm.Topic);
-                            command.Parameters.AddWithValue("@lastUpdatedTime", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-                            command.Parameters.AddWithValue("@minutes", detailsForm.Minutes);
-                            command.Parameters.AddWithValue("@keywords", detailsForm.Keywords);
-                            command.Parameters.AddWithValue("@url", detailsForm.URL);
-                            command.Parameters.AddWithValue("@method", detailsForm.Method);
-                            command.Parameters.AddWithValue("@body", detailsForm.Body);
-                            command.Parameters.AddWithValue("@enabled", detailsForm.Enabled);
-                            command.Parameters.AddWithValue("@responseType", detailsForm.ResponseType);
+                            command.CommandText = "DELETE FROM Alerts WHERE Id = @id";
+                            command.Parameters.AddWithValue("@id", id);
 
                             await Task.Run(() => command.ExecuteNonQuery());
-
-                            // Refresh the grid to show the updated record
-                            await LoadAlertsAsync();
-                            alertsGridView.Refresh();
                         }
+
+                        await LoadAlertsAsync(); // Automatically refresh the grid view
                     }
-                }
-
-                // Handle the "Delete" button click
-                else if (alertsGridView.Columns[e.ColumnIndex] is DataGridViewButtonColumn deleteColumn &&
-                    deleteColumn.Name == "Delete")
-                {
-                    var result = MessageBox.Show("Are you sure you want to delete this alert?", "Confirm Delete", MessageBoxButtons.YesNo);
-                    if (result == DialogResult.Yes)
+                    catch (Exception ex)
                     {
-                        var command = connection.CreateCommand();
-                        command.CommandText = "DELETE FROM Alerts WHERE Id = @id";
-                        command.Parameters.AddWithValue("@id", id);
-                        await Task.Run(() => command.ExecuteNonQuery());
-
-                        // Refresh the grid to show the updated records
-                        await LoadAlertsAsync();
-                        alertsGridView.Refresh();
+                        MessageBox.Show($"An error occurred while deleting the alert: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
-        }
-
-        private void AlertsGridView_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
-        {
-            if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+            else if (columnName == "Test")
             {
-                var column = alertsGridView.Columns[e.ColumnIndex];
-                // Check if the column is a button column
-                if (column is DataGridViewButtonColumn)
-                {
-                    Color buttonBackColor = Color.DarkBlue;
-                    Color buttonForeColor = Color.White;
-
-                    if (column.Name == "Edit")
-                    {
-                        buttonBackColor = Color.LightBlue;
-                    }
-                    else if (column.Name == "Delete")
-                    {
-                        buttonBackColor = Color.Red;
-                    }
-                    else if (column.Name == "Test")
-                    {
-                        buttonBackColor = Color.Green;
-                    }
-
-                    // Draw the button
-                    using (Brush backBrush = new SolidBrush(buttonBackColor))
-                    using (Brush foreBrush = new SolidBrush(buttonForeColor))
-                    {
-                        // Fill the button background
-                        e.Graphics.FillRectangle(backBrush, e.CellBounds);
-
-                        // Draw the button text
-                        var text = column.HeaderText;
-                        if (column is DataGridViewButtonColumn buttonColumn)
-                        {
-                            text = buttonColumn.Text;
-                        }
-
-                        var textSize = e.Graphics.MeasureString(text, e.CellStyle.Font);
-                        var textX = e.CellBounds.Left + (e.CellBounds.Width - textSize.Width) / 2;
-                        var textY = e.CellBounds.Top + (e.CellBounds.Height - textSize.Height) / 2;
-                        e.Graphics.DrawString(text, e.CellStyle.Font, foreBrush, new PointF(textX, textY));
-                    }
-
-                    e.Handled = true; // Prevent default painting
-                }
+                // Test the URL in an embedded browser
+                var url = alertsGridView.Rows[e.RowIndex].Cells["URL"].Value?.ToString();
+                Browser.OpenInEmbeddedBrowser(url);
             }
-        }
-
-        private void InitializeResponseTypeRadioButtons()
-        {
-            // Create a GroupBox to contain the radio buttons
-            var responseTypeGroupBox = new GroupBox
-            {
-                Text = "Response Type",
-                Location = new System.Drawing.Point(20, 320), // Adjust location as needed
-                Size = new System.Drawing.Size(200, 100) // Adjust size as needed
-            };
-
-            // Create the radio buttons
-            var jsonRadioButton = new RadioButton
-            {
-                Text = "JSON",
-                Location = new System.Drawing.Point(10, 20),
-                Checked = true // Default selection
-            };
-
-            var xmlRadioButton = new RadioButton
-            {
-                Text = "XML",
-                Location = new System.Drawing.Point(10, 40)
-            };
-
-            var htmlRadioButton = new RadioButton
-            {
-                Text = "HTML",
-                Location = new System.Drawing.Point(10, 60)
-            };
-
-            // Add the radio buttons to the GroupBox
-            responseTypeGroupBox.Controls.Add(jsonRadioButton);
-            responseTypeGroupBox.Controls.Add(xmlRadioButton);
-            responseTypeGroupBox.Controls.Add(htmlRadioButton);
-
-            // Add the GroupBox to the form
-            this.Controls.Add(responseTypeGroupBox);
         }
     }
+
+
 }
