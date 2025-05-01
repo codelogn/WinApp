@@ -65,6 +65,11 @@ namespace WindowsTaskbarApp.Forms
             backgroundJobsMenuItem.Click += BackgroundJobsMenuItem_Click;
             toolsMenu.DropDownItems.Add(backgroundJobsMenuItem); // Assuming toolsMenu is the Tools menu
 
+            // Add "Open Web Browser" menu item
+            var openWebBrowserMenuItem = new ToolStripMenuItem("Open Web Browser");
+            openWebBrowserMenuItem.Click += OpenWebBrowserForm;
+            toolsMenu.DropDownItems.Add(openWebBrowserMenuItem);
+
             menuStrip.Items.Add(toolsMenu);
 
             // Add "Help" menu after "Tools"
@@ -263,6 +268,12 @@ namespace WindowsTaskbarApp.Forms
             {
                 statusTextBox.AppendText(message + Environment.NewLine);
             }));
+        }
+
+        private void OpenWebBrowserForm(object sender, EventArgs e)
+        {
+            var webBrowserForm = new WebBrowserForm();
+            webBrowserForm.Show();
         }
     }
 }
