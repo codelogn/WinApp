@@ -7,6 +7,7 @@ using System.Windows.Forms;
 using WindowsTaskbarApp.Utils;
 using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
+using System.Collections.Generic;
 
 namespace WindowsTaskbarApp.Forms.Alerts
 {
@@ -312,9 +313,39 @@ namespace WindowsTaskbarApp.Forms.Alerts
             }
             else if (columnName == "Test")
             {
-                // Test the URL in an embedded browser
-                var url = alertsGridView.Rows[e.RowIndex].Cells["URL"].Value?.ToString();
-                Browser.OpenInEmbeddedBrowser(url);
+                try
+                {
+                    var url = alertsGridView.Rows[e.RowIndex].Cells["URL"].Value?.ToString();
+                    var method = alertsGridView.Rows[e.RowIndex].Cells["HTTPMethod"].Value?.ToString();
+                    var headers = alertsGridView.Rows[e.RowIndex].Cells["HTTPHeader"].Value?.ToString();
+                    var body = alertsGridView.Rows[e.RowIndex].Cells["HTTPBody"].Value?.ToString();
+
+                    if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(method))
+                    {
+                        MessageBox.Show("Invalid URL or HTTP Method.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    var headerDict = new Dictionary<string, string>();
+                    if (!string.IsNullOrEmpty(headers))
+                    {
+                        foreach (var header in headers.Split(';'))
+                        {
+                            var keyValue = header.Split(':');
+                            if (keyValue.Length == 2)
+                                headerDict[keyValue[0].Trim()] = keyValue[1].Trim();
+                        }
+                    }
+
+                    // Send the HTTP request and display the response
+                    var response = await HttpRestApi.SendRequestAsync(url, method, headerDict, body);
+                    MessageBox.Show(response, "HTTP Response", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    // Catch any exception and display it in an alert box
+                    MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
             else if (columnName == "OpenWeb")
             {
