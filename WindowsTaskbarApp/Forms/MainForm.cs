@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using WindowsTaskbarApp.Forms.Alerts;
 using WindowsTaskbarApp.Jobs;
 using WindowsTaskbarApp.Forms.Jobs;
+using WindowsTaskbarApp.Forms.Links;
 
 namespace WindowsTaskbarApp.Forms
 {
@@ -58,8 +59,6 @@ namespace WindowsTaskbarApp.Forms
             executionMenuItem.Click += OpenExecutionForm;
             toolsMenu.DropDownItems.Add(executionMenuItem);
 
-            toolsMenu.DropDownItems.Add("Alerts", null, OpenAlertsForm);
-
             // Add Background Jobs menu item
             backgroundJobsMenuItem = new ToolStripMenuItem("Background Jobs");
             backgroundJobsMenuItem.Click += BackgroundJobsMenuItem_Click;
@@ -71,6 +70,15 @@ namespace WindowsTaskbarApp.Forms
             toolsMenu.DropDownItems.Add(openWebBrowserMenuItem);
 
             menuStrip.Items.Add(toolsMenu);
+
+            // Add "Admin" menu between "Tools" and "Help"
+            var adminMenu = new ToolStripMenuItem("Admin");
+            adminMenu.DropDownItems.Add("Manage Links", null, ShowLinksManagement); // Updated text and method
+
+            // Move "Alerts" to Admin menu
+            adminMenu.DropDownItems.Add("Manage Alerts", null, OpenAlertsForm);
+
+            menuStrip.Items.Add(adminMenu);
 
             // Add "Help" menu after "Tools"
             var helpMenu = new ToolStripMenuItem("Help");
@@ -141,6 +149,12 @@ namespace WindowsTaskbarApp.Forms
         {
             MessageBox.Show("This is a sample Windows Forms application.", "About");
         }
+
+        private void ShowLinksManagement(object sender, EventArgs e)
+        {
+            var linksManagementForm = new LinksManagementForm();
+            linksManagementForm.ShowDialog();
+        }        
 
         private void OnOpenClicked(object sender, EventArgs e)
         {
@@ -275,5 +289,6 @@ namespace WindowsTaskbarApp.Forms
             var webBrowserForm = new WebBrowserForm();
             webBrowserForm.Show();
         }
+
     }
 }
