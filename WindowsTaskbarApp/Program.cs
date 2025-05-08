@@ -1,5 +1,7 @@
 using System;
 using System.Windows.Forms;
+using WindowsTaskbarApp.Tools.Links;
+using WindowsTaskbarApp.Services.Database;
 
 namespace WindowsTaskbarApp
 {
@@ -10,7 +12,18 @@ namespace WindowsTaskbarApp
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Forms.MainForm());
+
+            // Initialize the database
+            DatabaseInitializer.Initialize();
+
+            // Initialize the Links tray icon
+            using (var linksTrayIcon = new LinksTrayIcon())
+            {
+                linksTrayIcon.Initialize();
+
+                // Run the main form
+                Application.Run(new Forms.MainForm());
+            }
         }
     }
 }
