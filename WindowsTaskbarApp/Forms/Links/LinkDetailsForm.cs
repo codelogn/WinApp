@@ -10,38 +10,65 @@ namespace WindowsTaskbarApp.Forms.Links
         private readonly int? linkId; // Nullable to differentiate between Add and Edit
         private TextBox titleTextBox;
         private TextBox linkTextBox;
+        private TextBox tagsTextBox;
+        private CheckBox enableAutoStartupCheckBox;
         private Button saveButton;
 
-        public LinkDetailsForm(SQLiteConnection connection, int? linkId = null, string title = "", string link = "")
+        public LinkDetailsForm(SQLiteConnection connection, int? linkId = null, string title = "", string link = "", string tags = "", bool enableAutoStartup = false)
         {
+            if (connection == null || connection.State != System.Data.ConnectionState.Open)
+            {
+                throw new ArgumentException("Database connection must be initialized and open.", nameof(connection));
+            }
+
             this.connection = connection;
             this.linkId = linkId;
 
             InitializeComponent();
 
-            // Populate fields if editing
             titleTextBox.Text = title;
             linkTextBox.Text = link;
+            tagsTextBox.Text = tags;
+            enableAutoStartupCheckBox.Checked = enableAutoStartup;
         }
 
         private void InitializeComponent()
         {
             this.Text = linkId.HasValue ? "Edit Link" : "Add Link";
-            this.Size = new System.Drawing.Size(400, 200);
+            this.Size = new System.Drawing.Size(400, 400); // Increased height to accommodate the new checkbox
 
             var titleLabel = new Label { Text = "Title:", Left = 20, Top = 20, Width = 100 };
             titleTextBox = new TextBox { Left = 120, Top = 20, Width = 200 };
 
             var linkLabel = new Label { Text = "Link:", Left = 20, Top = 60, Width = 100 };
-            linkTextBox = new TextBox { Left = 120, Top = 60, Width = 200 };
+            linkTextBox = new TextBox
+            {
+                Left = 120,
+                Top = 60,
+                Width = 200,
+                Height = 100, // Increased height for multi-line text area
+                Multiline = true, // Enable multi-line
+                ScrollBars = ScrollBars.Vertical, // Add a vertical scrollbar
+                MaxLength = 3000 // Allow up to 3000 characters
+            };
 
-            saveButton = new Button { Text = "Save", Left = 120, Top = 100, Width = 100 };
+            var tagsLabel = new Label { Text = "Tags:", Left = 20, Top = 180, Width = 100 };
+            tagsTextBox = new TextBox { Left = 120, Top = 180, Width = 200 };
+
+            var enableAutoStartupLabel = new Label { Text = "Enable Auto Startup:", Left = 20, Top = 220, Width = 150 };
+            enableAutoStartupCheckBox = new CheckBox { Left = 180, Top = 220 };
+
+            saveButton = new Button { Text = "Save", Left = 120, Top = 270, Width = 100 }; // Adjusted position
             saveButton.Click += SaveButton_Click;
 
             this.Controls.Add(titleLabel);
             this.Controls.Add(titleTextBox);
             this.Controls.Add(linkLabel);
             this.Controls.Add(linkTextBox);
+            this.Controls.Add(tagsLabel);
+            this.Controls.Add(tagsTextBox);
+            this.Controls.Add(enableAutoStartupLabel);
+            this.Controls.Add(enableAutoStartupCheckBox);
             this.Controls.Add(saveButton);
         }
 
@@ -49,6 +76,7 @@ namespace WindowsTaskbarApp.Forms.Links
         {
             var title = titleTextBox.Text.Trim();
             var link = linkTextBox.Text.Trim();
+            var tags = tagsTextBox.Text.Trim();
 
             if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(link))
             {
@@ -58,24 +86,34 @@ namespace WindowsTaskbarApp.Forms.Links
 
             try
             {
-                connection.Open();
+                if (connection.State != System.Data.ConnectionState.Open)
+                {
+                    connection.Open(); // Ensure the connection is open
+                }
 
-                SQLiteCommand command;
+                string query;
                 if (linkId.HasValue)
                 {
-                    // Update existing record
-                    command = new SQLiteCommand("UPDATE links SET Title = @Title, Link = @Link, LastUpdated = CURRENT_TIMESTAMP WHERE Id = @Id", connection);
-                    command.Parameters.AddWithValue("@Id", linkId.Value);
+                    query = "UPDATE Links SET Title = @Title, Link = @Link, Tags = @Tags, EnableAutoStartup = @EnableAutoStartup, LastUpdated = CURRENT_TIMESTAMP WHERE Id = @Id";
                 }
                 else
                 {
-                    // Insert new record
-                    command = new SQLiteCommand("INSERT INTO links (Title, Link, LastUpdated) VALUES (@Title, @Link, CURRENT_TIMESTAMP)", connection);
+                    query = "INSERT INTO Links (Title, Link, Tags, EnableAutoStartup, LastUpdated) VALUES (@Title, @Link, @Tags, @EnableAutoStartup, CURRENT_TIMESTAMP)";
                 }
 
-                command.Parameters.AddWithValue("@Title", title);
-                command.Parameters.AddWithValue("@Link", link);
-                command.ExecuteNonQuery();
+                using (var command = new SQLiteCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@Title", title);
+                    command.Parameters.AddWithValue("@Link", link);
+                    command.Parameters.AddWithValue("@Tags", tags);
+                    command.Parameters.AddWithValue("@EnableAutoStartup", enableAutoStartupCheckBox.Checked ? 1 : 0);
+                    if (linkId.HasValue)
+                    {
+                        command.Parameters.AddWithValue("@Id", linkId.Value);
+                    }
+
+                    command.ExecuteNonQuery();
+                }
 
                 this.DialogResult = DialogResult.OK; // Indicate success
                 this.Close();
@@ -83,10 +121,6 @@ namespace WindowsTaskbarApp.Forms.Links
             catch (Exception ex)
             {
                 MessageBox.Show($"Error saving link: {ex.Message}", "Error");
-            }
-            finally
-            {
-                connection.Close();
             }
         }
     }

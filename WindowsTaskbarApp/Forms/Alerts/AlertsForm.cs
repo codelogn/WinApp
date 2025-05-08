@@ -4,6 +4,7 @@ using System.Data.SQLite;
 using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using WindowsTaskbarApp.Services.Database;
 using WindowsTaskbarApp.Utils;
 using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
@@ -96,7 +97,7 @@ namespace WindowsTaskbarApp.Forms.Alerts
             {
                 Name = "HTTPMethod",
                 HeaderText = "HTTP Method",
-                DataPropertyName = "HTTPMethod" // Ensure this matches the database column name
+                DataPropertyName = "HTTPMethod"
             });
 
             alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
@@ -182,45 +183,12 @@ namespace WindowsTaskbarApp.Forms.Alerts
 
         private async Task InitializeDatabaseAsync()
         {
-            var dbPath = "alerts.db";
+            // Initialize the database and tables
+            DatabaseInitializer.Initialize();
 
-            if (!System.IO.File.Exists(dbPath))
-            {
-                SQLiteConnection.CreateFile(dbPath);
-            }
-
-            connection = new SQLiteConnection($"Data Source={dbPath};Version=3;");
+            // Open the SQLite connection
+            connection = new SQLiteConnection("Data Source=alerts.db;Version=3;");
             await connection.OpenAsync();
-
-            await InitializeDatabaseSchemaAsync(connection);
-        }
-
-        private static async Task InitializeDatabaseSchemaAsync(SQLiteConnection connection)
-        {
-            if (connection == null)
-                throw new ArgumentNullException(nameof(connection));
-
-            var command = connection.CreateCommand();
-            command.CommandText = @"
-                CREATE TABLE IF NOT EXISTS Alerts (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Topic TEXT NOT NULL,
-                    LastUpdatedTime TEXT NOT NULL,
-                    Minutes TEXT NOT NULL,
-                    Keywords TEXT,
-                    Query TEXT,
-                    URL TEXT NOT NULL,
-                    HTTPMethod TEXT NOT NULL, -- Renamed
-                    HTTPBody TEXT,            -- Renamed
-                    Enabled TEXT NOT NULL,
-                    ResponseType TEXT DEFAULT 'JSON',
-                    ExecutionType TEXT DEFAULT 'Win Alert',
-                    HTTPHeader TEXT,          -- Renamed
-                    LastTriggered TEXT
-                );
-            ";
-
-            await Task.Run(() => command.ExecuteNonQuery());
         }
 
         private async Task LoadAlertsAsync()
@@ -243,7 +211,6 @@ namespace WindowsTaskbarApp.Forms.Alerts
         {
             using (var detailsForm = new AlertDetailsForm(connection))
             {
-                // Subscribe to the AlertSaved event
                 detailsForm.AlertSaved += async (s, args) =>
                 {
                     await LoadAlertsAsync(); // Refresh the grid view

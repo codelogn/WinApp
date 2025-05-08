@@ -1,21 +1,25 @@
 using System;
 using System.Data;
 using System.Data.SQLite;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace WindowsTaskbarApp.Forms.Links
 {
     public partial class LinksManagementForm : Form
     {
+        private SQLiteConnection connection;
         private DataGridView linksDataGridView;
         private Button addButton;
-        private Button editButton;
-        private Button deleteButton;
-        private SQLiteConnection connection;
 
         public LinksManagementForm()
         {
             InitializeComponent();
+            this.Load += async (sender, e) =>
+            {
+                await InitializeDatabaseAsync();
+                await LoadLinksDataAsync();
+            };
         }
 
         private void InitializeComponent()
@@ -29,6 +33,7 @@ namespace WindowsTaskbarApp.Forms.Links
                 Dock = DockStyle.Fill,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
             };
+            linksDataGridView.CellClick += LinksDataGridView_CellClick; // Attach CellClick event
             this.Controls.Add(linksDataGridView);
 
             // Initialize Add Button
@@ -36,47 +41,107 @@ namespace WindowsTaskbarApp.Forms.Links
             this.Controls.Add(addButton);
 
             // Event Handlers
-            this.Load += LinksManagementForm_Load;
             addButton.Click += AddButton_Click;
         }
 
-        private void LinksManagementForm_Load(object sender, EventArgs e)
+        private async Task InitializeDatabaseAsync()
         {
-            // Initialize SQLite connection
-            connection = new SQLiteConnection("Data Source=alerts.db;Version=3;");
-            EnsureLinksTableExists();
-            LoadLinksData();
-
-            // Add Edit and Delete button columns to the right
-            if (!linksDataGridView.Columns.Contains("EditButton"))
+            try
             {
-                var editButtonColumn = new DataGridViewButtonColumn
-                {
-                    Name = "EditButton",
-                    HeaderText = "Edit",
-                    Text = "Edit",
-                    UseColumnTextForButtonValue = true
-                };
-                linksDataGridView.Columns.Add(editButtonColumn); // Add after data binding
+                // Initialize SQLite connection
+                connection = new SQLiteConnection("Data Source=alerts.db;Version=3;");
+                await connection.OpenAsync();
             }
-
-            if (!linksDataGridView.Columns.Contains("DeleteButton"))
+            catch (Exception ex)
             {
-                var deleteButtonColumn = new DataGridViewButtonColumn
-                {
-                    Name = "DeleteButton",
-                    HeaderText = "Delete",
-                    Text = "Delete",
-                    UseColumnTextForButtonValue = true
-                };
-                linksDataGridView.Columns.Add(deleteButtonColumn); // Add after data binding
+                MessageBox.Show($"Error initializing database connection: {ex.Message}", "Error");
             }
-
-            // Handle button clicks in the grid
-            linksDataGridView.CellClick += LinksDataGridView_CellClick;
         }
 
-        private void LinksDataGridView_CellClick(object sender, DataGridViewCellEventArgs e)
+        private async Task LoadLinksDataAsync()
+        {
+            try
+            {
+                if (connection == null || connection.State != ConnectionState.Open)
+                {
+                    throw new InvalidOperationException("Database connection is not initialized or open.");
+                }
+
+                linksDataGridView.DataSource = null;
+
+                var query = "SELECT Id, Title, Link, Tags, EnableAutoStartup, LastUpdated FROM Links";
+                var adapter = new SQLiteDataAdapter(query, connection);
+                var dataTable = new DataTable();
+
+                await Task.Run(() => adapter.Fill(dataTable));
+
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    if (row["LastUpdated"] != DBNull.Value)
+                    {
+                        var utcTime = DateTime.Parse(row["LastUpdated"].ToString());
+                        var localTime = utcTime.ToLocalTime();
+                        row["LastUpdated"] = localTime.ToString("yyyy-MM-dd HH:mm:ss");
+                    }
+                }
+
+                linksDataGridView.Invoke((Action)(() =>
+                {
+                    linksDataGridView.DataSource = dataTable;
+
+                    if (linksDataGridView.Columns["Id"] != null)
+                    {
+                        linksDataGridView.Columns["Id"].Visible = false;
+                    }
+
+                    // Add Edit and Delete button columns if not already added
+                    if (!linksDataGridView.Columns.Contains("EditButton"))
+                    {
+                        var editButtonColumn = new DataGridViewButtonColumn
+                        {
+                            Name = "EditButton",
+                            HeaderText = "Edit",
+                            Text = "Edit",
+                            UseColumnTextForButtonValue = true
+                        };
+                        linksDataGridView.Columns.Add(editButtonColumn);
+                    }
+
+                    if (!linksDataGridView.Columns.Contains("DeleteButton"))
+                    {
+                        var deleteButtonColumn = new DataGridViewButtonColumn
+                        {
+                            Name = "DeleteButton",
+                            HeaderText = "Delete",
+                            Text = "Delete",
+                            UseColumnTextForButtonValue = true
+                        };
+                        linksDataGridView.Columns.Add(deleteButtonColumn);
+                    }
+
+                    // Move Edit and Delete buttons to the rightmost columns
+                    linksDataGridView.Columns["EditButton"].DisplayIndex = linksDataGridView.Columns.Count - 2;
+                    linksDataGridView.Columns["DeleteButton"].DisplayIndex = linksDataGridView.Columns.Count - 1;
+                }));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading data: {ex.Message}", "Error");
+            }
+        }
+
+        private async void AddButton_Click(object sender, EventArgs e)
+        {
+            using (var linkDetailsForm = new LinkDetailsForm(connection))
+            {
+                if (linkDetailsForm.ShowDialog() == DialogResult.OK)
+                {
+                    await LoadLinksDataAsync(); // Refresh the grid after adding
+                }
+            }
+        }
+
+        private async void LinksDataGridView_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0)
             {
@@ -86,12 +151,14 @@ namespace WindowsTaskbarApp.Forms.Links
                     var id = Convert.ToInt32(linksDataGridView.Rows[e.RowIndex].Cells["Id"].Value);
                     var title = linksDataGridView.Rows[e.RowIndex].Cells["Title"].Value.ToString();
                     var link = linksDataGridView.Rows[e.RowIndex].Cells["Link"].Value.ToString();
+                    var tags = linksDataGridView.Rows[e.RowIndex].Cells["Tags"].Value.ToString();
+                    var enableAutoStartup = Convert.ToBoolean(linksDataGridView.Rows[e.RowIndex].Cells["EnableAutoStartup"].Value);
 
-                    using (var linkDetailsForm = new LinkDetailsForm(connection, id, title, link))
+                    using (var linkDetailsForm = new LinkDetailsForm(connection, id, title, link, tags, enableAutoStartup))
                     {
                         if (linkDetailsForm.ShowDialog() == DialogResult.OK)
                         {
-                            LoadLinksData(); // Refresh the grid after editing
+                            await LoadLinksDataAsync(); // Refresh the grid after editing
                         }
                     }
                 }
@@ -108,25 +175,17 @@ namespace WindowsTaskbarApp.Forms.Links
                         {
                             try
                             {
-                                connection.Open();
-                                var command = new SQLiteCommand("DELETE FROM links WHERE Id = @Id", connection);
+                                var command = new SQLiteCommand("DELETE FROM Links WHERE Id = @Id", connection);
                                 command.Parameters.AddWithValue("@Id", id);
-                                command.ExecuteNonQuery();
+                                await command.ExecuteNonQueryAsync();
+
+                                // Reload data after deletion
+                                await LoadLinksDataAsync();
                             }
                             catch (Exception ex)
                             {
                                 MessageBox.Show($"Error deleting link: {ex.Message}");
                             }
-                            finally
-                            {
-                                if (connection.State == ConnectionState.Open)
-                                {
-                                    connection.Close();
-                                }
-                            }
-
-                            // Reload data after deletion
-                            LoadLinksData();
                         }
                     }
                     else
@@ -137,173 +196,15 @@ namespace WindowsTaskbarApp.Forms.Links
             }
         }
 
-        private void EnsureLinksTableExists()
+        protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            try
-            {
-                connection.Open();
-                var createTableQuery = @"
-                    CREATE TABLE IF NOT EXISTS links (
-                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        Title TEXT NOT NULL,
-                        Link TEXT NOT NULL,
-                        LastUpdated DATETIME DEFAULT CURRENT_TIMESTAMP
-                    );";
-                var command = new SQLiteCommand(createTableQuery, connection);
-                command.ExecuteNonQuery();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error ensuring table exists: {ex.Message}");
-            }
-            finally
+            // Ensure the database connection is closed when the form is closed
+            if (connection != null && connection.State == ConnectionState.Open)
             {
                 connection.Close();
             }
-        }
 
-        private void LoadLinksData()
-        {
-            try
-            {
-                // Clear the DataGridView to avoid conflicts
-                linksDataGridView.DataSource = null;
-
-                connection.Open();
-                var query = "SELECT Id, Title, Link, LastUpdated FROM links";
-                var adapter = new SQLiteDataAdapter(query, connection);
-                var dataTable = new DataTable();
-                adapter.Fill(dataTable);
-
-                // Bind the data to the DataGridView
-                linksDataGridView.DataSource = dataTable;
-
-                // Hide the Id column if not needed
-                if (linksDataGridView.Columns["Id"] != null)
-                {
-                    linksDataGridView.Columns["Id"].Visible = false;
-                }
-
-                // Ensure Edit and Delete button columns are added to the right
-                if (!linksDataGridView.Columns.Contains("EditButton"))
-                {
-                    var editButtonColumn = new DataGridViewButtonColumn
-                    {
-                        Name = "EditButton",
-                        HeaderText = "Edit",
-                        Text = "Edit",
-                        UseColumnTextForButtonValue = true
-                    };
-                    linksDataGridView.Columns.Add(editButtonColumn);
-                }
-
-                if (!linksDataGridView.Columns.Contains("DeleteButton"))
-                {
-                    var deleteButtonColumn = new DataGridViewButtonColumn
-                    {
-                        Name = "DeleteButton",
-                        HeaderText = "Delete",
-                        Text = "Delete",
-                        UseColumnTextForButtonValue = true
-                    };
-                    linksDataGridView.Columns.Add(deleteButtonColumn);
-                }
-
-                // Move Edit and Delete columns to the rightmost position
-                linksDataGridView.Columns["EditButton"].DisplayIndex = linksDataGridView.Columns.Count - 2;
-                linksDataGridView.Columns["DeleteButton"].DisplayIndex = linksDataGridView.Columns.Count - 1;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error loading data: {ex.Message}");
-            }
-            finally
-            {
-                if (connection.State == ConnectionState.Open)
-                {
-                    connection.Close();
-                }
-            }
-        }
-
-        private void AddButton_Click(object sender, EventArgs e)
-        {
-            using (var linkDetailsForm = new LinkDetailsForm(connection))
-            {
-                if (linkDetailsForm.ShowDialog() == DialogResult.OK)
-                {
-                    LoadLinksData(); // Refresh the grid after adding
-                }
-            }
-        }
-
-        private void EditButton_Click(object sender, EventArgs e)
-        {
-            if (linksDataGridView.SelectedRows.Count > 0)
-            {
-                var id = Convert.ToInt32(linksDataGridView.SelectedRows[0].Cells["Id"].Value);
-                var title = linksDataGridView.SelectedRows[0].Cells["Title"].Value.ToString();
-                var link = linksDataGridView.SelectedRows[0].Cells["Link"].Value.ToString();
-
-                using (var linkDetailsForm = new LinkDetailsForm(connection, id, title, link))
-                {
-                    if (linkDetailsForm.ShowDialog() == DialogResult.OK)
-                    {
-                        LoadLinksData(); // Refresh the grid after editing
-                    }
-                }
-            }
-            else
-            {
-                MessageBox.Show("Please select a link to edit.", "Edit Link");
-            }
-        }
-
-        private void DeleteButton_Click(object sender, EventArgs e)
-        {
-            if (linksDataGridView.SelectedRows.Count > 0)
-            {
-                var id = linksDataGridView.SelectedRows[0].Cells["Id"].Value.ToString();
-                var confirmResult = MessageBox.Show("Are you sure to delete this link?", "Confirm Delete", MessageBoxButtons.YesNo);
-
-                if (confirmResult == DialogResult.Yes)
-                {
-                    try
-                    {
-                        connection.Open();
-                        var command = new SQLiteCommand("DELETE FROM links WHERE Id = @Id", connection);
-                        command.Parameters.AddWithValue("@Id", id);
-                        command.ExecuteNonQuery();
-                        LoadLinksData();
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Error deleting link: {ex.Message}");
-                    }
-                    finally
-                    {
-                        connection.Close();
-                    }
-                }
-            }
-        }
-    }
-
-    // Helper class for input dialogs
-    public static class Prompt
-    {
-        public static string ShowDialog(string text, string caption, string defaultValue = "")
-        {
-            var prompt = new Form { Width = 400, Height = 150, Text = caption };
-            var textLabel = new Label { Left = 20, Top = 20, Text = text, Width = 350 };
-            var textBox = new TextBox { Left = 20, Top = 50, Width = 350, Text = defaultValue };
-            var confirmation = new Button { Text = "OK", Left = 270, Width = 100, Top = 80, DialogResult = DialogResult.OK };
-            prompt.Controls.Add(textLabel);
-            prompt.Controls.Add(textBox);
-            prompt.Controls.Add(confirmation);
-            prompt.AcceptButton = confirmation;
-
-            return prompt.ShowDialog() == DialogResult.OK ? textBox.Text : string.Empty;
+            base.OnFormClosing(e);
         }
     }
 }

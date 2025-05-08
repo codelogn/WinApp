@@ -89,18 +89,6 @@ namespace WindowsTaskbarApp.Forms
             this.MainMenuStrip = menuStrip;
             this.Controls.Add(menuStrip);
 
-            // Create a context menu for the NotifyIcon
-            contextMenu = new ContextMenuStrip();
-            contextMenu.Items.Add("Open", null, OnOpenClicked);
-            contextMenu.Items.Add("Exit", null, OnExitClicked);
-
-            // Create the NotifyIcon
-            notifyIcon = new NotifyIcon
-            {
-                Icon = SystemIcons.Application,
-                ContextMenuStrip = contextMenu,
-                Visible = true
-            };
 
             // Initialize Clock Countdown Timer
             clockCountdownTimer = new Timer
