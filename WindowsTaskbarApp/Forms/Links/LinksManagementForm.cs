@@ -67,7 +67,10 @@ namespace WindowsTaskbarApp.Forms.Links
                     throw new InvalidOperationException("Database connection is not initialized or open.");
                 }
 
-                linksDataGridView.DataSource = null;
+                linksDataGridView.Invoke((Action)(() =>
+                {
+                    linksDataGridView.Columns.Clear(); // Clear existing columns to avoid duplicates
+                }));
 
                 var query = "SELECT Id, Title, Link, Tags, EnableAutoStartup, LastUpdated FROM Links";
                 var adapter = new SQLiteDataAdapter(query, connection);
@@ -119,9 +122,16 @@ namespace WindowsTaskbarApp.Forms.Links
                         linksDataGridView.Columns.Add(deleteButtonColumn);
                     }
 
-                    // Move Edit and Delete buttons to the rightmost columns
-                    linksDataGridView.Columns["EditButton"].DisplayIndex = linksDataGridView.Columns.Count - 2;
-                    linksDataGridView.Columns["DeleteButton"].DisplayIndex = linksDataGridView.Columns.Count - 1;
+                    // Ensure DisplayIndex values are set correctly
+                    if (linksDataGridView.Columns["LastUpdated"] != null && linksDataGridView.Columns["EditButton"] != null)
+                    {
+                        linksDataGridView.Columns["EditButton"].DisplayIndex = linksDataGridView.Columns["LastUpdated"].DisplayIndex + 1;
+                    }
+
+                    if (linksDataGridView.Columns["DeleteButton"] != null)
+                    {
+                        linksDataGridView.Columns["DeleteButton"].DisplayIndex = linksDataGridView.Columns.Count - 1;
+                    }
                 }));
             }
             catch (Exception ex)
