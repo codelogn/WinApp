@@ -65,7 +65,7 @@ namespace WindowsTaskbarApp.Tools.Links
         {
             try
             {
-                // Clear existing menu items (except the Exit option)
+                // Clear existing menu items
                 trayMenu.Items.Clear();
 
                 // Connect to the SQLite database
@@ -86,6 +86,10 @@ namespace WindowsTaskbarApp.Tools.Links
                     menuItem.Click += (s, e) => OpenLink(link);
                     trayMenu.Items.Add(menuItem);
                 }
+
+                // Add a separator and the Exit option
+                trayMenu.Items.Add(new ToolStripSeparator());
+                trayMenu.Items.Add("Exit", null, (s, e) => ExitTrayApp());
             }
             catch (Exception ex)
             {
@@ -119,6 +123,22 @@ namespace WindowsTaskbarApp.Tools.Links
             catch (Exception ex)
             {
                 MessageBox.Show($"Error opening link: {ex.Message}", "Error");
+            }
+        }
+
+        private void ExitTrayApp()
+        {
+            try
+            {
+                // Dispose of the tray icon
+                Dispose();
+
+                // Exit the message loop for the tray app
+                Application.ExitThread();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error exiting tray app: {ex.Message}", "Error");
             }
         }
 
