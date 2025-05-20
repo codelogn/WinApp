@@ -14,6 +14,21 @@ namespace WindowsTaskbarApp.Forms
         public WebBrowserForm()
         {
             InitializeComponent();
+
+            // Initialize WebView2 asynchronously in the Load event
+            this.Load += WebBrowserForm_Load;
+        }
+
+        private async void WebBrowserForm_Load(object sender, EventArgs e)
+        {
+            try
+            {
+                await webView.EnsureCoreWebView2Async();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"WebView2 initialization failed: {ex.Message}");
+            }
         }
 
         private void InitializeComponent()
@@ -25,6 +40,12 @@ namespace WindowsTaskbarApp.Forms
             webView = new WebView2
             {
                 Dock = DockStyle.Fill
+            };
+
+            // Ensure CoreWebView2 is initialized synchronously
+            webView.CoreWebView2InitializationCompleted += (s, e) =>
+            {
+                // You can handle post-initialization logic here if needed
             };
 
             // Initialize URL TextBox
@@ -84,14 +105,14 @@ namespace WindowsTaskbarApp.Forms
 
             // Add Stop button
             var stopButton = new ToolStripButton("Stop");
-            stopButton.Click += (sender, e) => webView.CoreWebView2.Stop();
+            stopButton.Click += (sender, e) => webView.CoreWebView2?.Stop();
             browserToolStrip.Items.Add(stopButton);
 
             // Add Home button
             var homeButton = new ToolStripButton("Home");
             homeButton.Click += (sender, e) =>
             {
-                if (!string.IsNullOrWhiteSpace(urlTextBox.Text))
+                if (!string.IsNullOrWhiteSpace(urlTextBox.Text) && webView.CoreWebView2 != null)
                 {
                     webView.CoreWebView2.Navigate(urlTextBox.Text);
                 }
@@ -112,13 +133,12 @@ namespace WindowsTaskbarApp.Forms
             };
         }
 
-        private async void LoadButton_Click(object sender, EventArgs e)
+        private void LoadButton_Click(object sender, EventArgs e)
         {
-            if (!string.IsNullOrWhiteSpace(urlTextBox.Text))
+            if (!string.IsNullOrWhiteSpace(urlTextBox.Text) && webView.CoreWebView2 != null)
             {
                 try
                 {
-                    await webView.EnsureCoreWebView2Async();
                     webView.CoreWebView2.Navigate(urlTextBox.Text);
                 }
                 catch (Exception ex)

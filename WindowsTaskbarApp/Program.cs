@@ -1,6 +1,4 @@
 using System;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using WindowsTaskbarApp.Tools.Links;
 using WindowsTaskbarApp.Tools.MainTool;
@@ -19,36 +17,24 @@ namespace WindowsTaskbarApp
             // Initialize the database
             DatabaseInitializer.Initialize();
 
-            // Run Main Form, Main Tool Tray App, and Links Tray App independently
-            Task.Run(() => RunMainForm());
-            Task.Run(() => RunMainToolTrayApp());
-            Task.Run(() => RunLinksTrayApp());
+            // Initialize tray icons
+            MainToolTrayIcon mainToolTrayIcon = null;
+            LinksTrayIcon linksTrayIcon = null;
 
-            // Keep the main thread alive
-            Application.Run();
-        }
+            Application.ApplicationExit += (s, e) =>
+            {
+                mainToolTrayIcon?.Dispose();
+                linksTrayIcon?.Dispose();
+            };
 
-        private static void RunMainForm()
-        {
+            mainToolTrayIcon = new MainToolTrayIcon();
+            mainToolTrayIcon.Initialize();
+
+            linksTrayIcon = new LinksTrayIcon();
+            linksTrayIcon.Initialize();
+
+            // Start the message loop and show the main form
             Application.Run(new Forms.MainForm());
-        }
-
-        private static void RunMainToolTrayApp()
-        {
-            using (var mainToolTrayIcon = new MainToolTrayIcon())
-            {
-                mainToolTrayIcon.Initialize();
-                Application.Run(); // Keeps the tray app running
-            }
-        }
-
-        private static void RunLinksTrayApp()
-        {
-            using (var linksTrayIcon = new LinksTrayIcon())
-            {
-                linksTrayIcon.Initialize();
-                Application.Run(); // Keeps the tray app running
-            }
         }
     }
 }
