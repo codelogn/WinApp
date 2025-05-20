@@ -69,6 +69,17 @@ namespace WindowsTaskbarApp.Forms
             openWebBrowserMenuItem.Click += OpenWebBrowserForm;
             toolsMenu.DropDownItems.Add(openWebBrowserMenuItem);
 
+            // Add "Test" menu under Tools
+            var testMenu = new ToolStripMenuItem("Test");
+
+            // Add "Test XML" submenu under Test
+            var testXmlMenuItem = new ToolStripMenuItem("Test XML");
+            testXmlMenuItem.Click += OpenTestXmlForm;
+            testMenu.DropDownItems.Add(testXmlMenuItem);
+
+            // Add Test menu to Tools menu
+            toolsMenu.DropDownItems.Add(testMenu);
+
             menuStrip.Items.Add(toolsMenu);
 
             // Add "Admin" menu between "Tools" and "Help"
@@ -276,6 +287,12 @@ namespace WindowsTaskbarApp.Forms
         {
             var webBrowserForm = new WebBrowserForm();
             webBrowserForm.Show();
+        }
+
+        private void OpenTestXmlForm(object sender, EventArgs e)
+        {
+            var testXmlForm = new TestXmlForm();
+            testXmlForm.Show();
         }
 
     }
