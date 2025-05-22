@@ -84,52 +84,108 @@ namespace WindowsTaskbarApp.Forms.Alerts
             var layoutPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 2,
+                ColumnCount = 1,
                 Padding = new Padding(10),
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink
             };
 
-            layoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
-            layoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70));
+            // --- General Section (GroupBox) ---
+            var generalGroup = new GroupBox
+            {
+                Text = "General",
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink
+            };
+            var generalLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink
+            };
+            generalLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
+            generalLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70));
 
-            // Add fields to the layout
-            AddFieldToLayout(layoutPanel, "Topic:", topicTextBox = new TextBox { Dock = DockStyle.Fill });
-            AddFieldToLayout(layoutPanel, "Minutes:", minutesTextBox = new TextBox { Dock = DockStyle.Fill });
-            AddFieldToLayout(layoutPanel, "Keywords:", keywordsTextBox = new TextBox { Dock = DockStyle.Fill });
-            AddFieldToLayout(layoutPanel, "Query:", queryTextBox = new TextBox { Dock = DockStyle.Fill });
-            AddFieldToLayout(layoutPanel, "URL:", urlTextBox = new TextBox { Dock = DockStyle.Fill });
-            AddFieldToLayout(layoutPanel, "HTTP Method:", methodComboBox = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList });
-            methodComboBox.Items.AddRange(new string[] { "GET", "POST" });
-            AddFieldToLayout(layoutPanel, "HTTP Body:", bodyTextBox = new TextBox { Dock = DockStyle.Fill, Multiline = true, Height = 100 });
-            AddFieldToLayout(layoutPanel, "Enabled:", enabledCheckBox = new CheckBox { Dock = DockStyle.Left });
-            AddFieldToLayout(layoutPanel, "Last Triggered:", lastTriggeredPicker = new DateTimePicker
+            AddFieldToLayout(generalLayout, "Enabled:", enabledCheckBox = new CheckBox { Dock = DockStyle.Left });
+            AddFieldToLayout(generalLayout, "Last Triggered:", lastTriggeredPicker = new DateTimePicker
             {
                 Dock = DockStyle.Fill,
                 Format = DateTimePickerFormat.Custom,
                 CustomFormat = "yyyy-MM-dd HH:mm:ss"
             });
-            AddFieldToLayout(layoutPanel, "Last Updated:", timeTextBox = new TextBox { Dock = DockStyle.Fill });
-            AddFieldToLayout(layoutPanel, "Response Type:", responseTypeComboBox = new ComboBox
+            AddFieldToLayout(generalLayout, "Last Updated:", timeTextBox = new TextBox { Dock = DockStyle.Fill });
+            AddFieldToLayout(generalLayout, "Topic:", topicTextBox = new TextBox { Dock = DockStyle.Fill });
+            AddFieldToLayout(generalLayout, "Minutes:", minutesTextBox = new TextBox { Dock = DockStyle.Fill });
+
+            generalGroup.Controls.Add(generalLayout);
+            layoutPanel.Controls.Add(generalGroup);
+
+            // --- Request Section (GroupBox) ---
+            var requestGroup = new GroupBox
+            {
+                Text = "Request",
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink
+            };
+            var requestLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink
+            };
+            requestLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
+            requestLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70));
+
+            AddFieldToLayout(requestLayout, "URL:", urlTextBox = new TextBox { Dock = DockStyle.Fill });
+            AddFieldToLayout(requestLayout, "HTTP Method:", methodComboBox = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList });
+            methodComboBox.Items.AddRange(new string[] { "GET", "POST" });
+            AddFieldToLayout(requestLayout, "HTTP Body:", bodyTextBox = new TextBox { Dock = DockStyle.Fill, Multiline = true, Height = 100 });
+            AddFieldToLayout(requestLayout, "HTTP Header:", headerTextBox = new TextBox { Dock = DockStyle.Fill, Multiline = true, Height = 150 });
+
+            requestGroup.Controls.Add(requestLayout);
+            layoutPanel.Controls.Add(requestGroup);
+
+            // --- Response Section (GroupBox) ---
+            var responseGroup = new GroupBox
+            {
+                Text = "Response",
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink
+            };
+            var responseLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink
+            };
+            responseLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
+            responseLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70));
+
+            AddFieldToLayout(responseLayout, "Keywords:", keywordsTextBox = new TextBox { Dock = DockStyle.Fill });
+            AddFieldToLayout(responseLayout, "Query:", queryTextBox = new TextBox { Dock = DockStyle.Fill });
+            AddFieldToLayout(responseLayout, "Response Type:", responseTypeComboBox = new ComboBox
             {
                 Dock = DockStyle.Fill,
                 DropDownStyle = ComboBoxStyle.DropDownList
             });
             responseTypeComboBox.Items.AddRange(new string[] { "JSON", "XML", "HTML" });
-            AddFieldToLayout(layoutPanel, "Execution Type:", executionTypeComboBox = new ComboBox
+            AddFieldToLayout(responseLayout, "Execution Type:", executionTypeComboBox = new ComboBox
             {
                 Dock = DockStyle.Fill,
                 DropDownStyle = ComboBoxStyle.DropDownList
             });
             executionTypeComboBox.Items.AddRange(new string[] { "Win Alert", "Win Notification", "Win Browser", "Popup Box" });
-            AddFieldToLayout(layoutPanel, "HTTP Header:", headerTextBox = new TextBox
-            {
-                Dock = DockStyle.Fill,
-                Multiline = true,
-                Height = 150 // Increased height for better visibility
-            });
 
-            // Create buttons
+            responseGroup.Controls.Add(responseLayout);
+            layoutPanel.Controls.Add(responseGroup);
+
+            // --- Buttons ---
             saveButton = new Button
             {
                 Text = "Save",
@@ -160,7 +216,6 @@ namespace WindowsTaskbarApp.Forms.Alerts
             };
             testWithKeywordsButton.Click += TestWithKeywordsButton_Click;
 
-            // Add buttons to a FlowLayoutPanel
             var buttonPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Bottom,
@@ -175,10 +230,9 @@ namespace WindowsTaskbarApp.Forms.Alerts
             this.Controls.Add(layoutPanel);
             this.Controls.Add(buttonPanel);
 
-            // Increase the form size
             this.Text = "Alert Details";
-            this.Size = new System.Drawing.Size(1000, 700); // Increased size for better visibility
-            this.StartPosition = FormStartPosition.CenterScreen; // Center the form on the screen
+            this.Size = new System.Drawing.Size(1000, 700);
+            this.StartPosition = FormStartPosition.CenterScreen;
         }
 
         private void AddFieldToLayout(TableLayoutPanel layout, string labelText, Control control)
