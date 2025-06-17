@@ -4,11 +4,11 @@ using WindowsTaskbarApp.Jobs;
 
 namespace WindowsTaskbarApp.Forms.Jobs
 {
-    public partial class BackgroundJobsForm : Form
+    public partial class EventsForm : Form
     {
         private readonly BackgroundJobs backgroundJobs;
 
-        public BackgroundJobsForm(BackgroundJobs backgroundJobs)
+        public EventsForm(BackgroundJobs backgroundJobs)
         {
             InitializeComponent();
             this.backgroundJobs = backgroundJobs;
@@ -16,7 +16,7 @@ namespace WindowsTaskbarApp.Forms.Jobs
 
         private void InitializeComponent()
         {
-            this.Text = "Background Jobs";
+            this.Text = "Events";
             this.Size = new System.Drawing.Size(300, 150);
 
             var startButton = new Button

@@ -1,0 +1,4 @@
+- Start events 
+- Add auto start for the groups links
+- Refactor code centralize .db configurations 
+- 

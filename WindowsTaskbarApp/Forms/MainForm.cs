@@ -5,6 +5,7 @@ using WindowsTaskbarApp.Forms.Alerts;
 using WindowsTaskbarApp.Jobs;
 using WindowsTaskbarApp.Forms.Jobs;
 using WindowsTaskbarApp.Forms.Links;
+using WindowsTaskbarApp.Tools.GroupLinks;
 
 namespace WindowsTaskbarApp.Forms
 {
@@ -59,10 +60,7 @@ namespace WindowsTaskbarApp.Forms
             executionMenuItem.Click += OpenExecutionForm;
             toolsMenu.DropDownItems.Add(executionMenuItem);
 
-            // Add Background Jobs menu item
-            backgroundJobsMenuItem = new ToolStripMenuItem("Background Jobs");
-            backgroundJobsMenuItem.Click += BackgroundJobsMenuItem_Click;
-            toolsMenu.DropDownItems.Add(backgroundJobsMenuItem); // Assuming toolsMenu is the Tools menu
+
 
             // Add "Open Web Browser" menu item
             var openWebBrowserMenuItem = new ToolStripMenuItem("Open Web Browser");
@@ -88,6 +86,11 @@ namespace WindowsTaskbarApp.Forms
 
             // Move "Alerts" to Admin menu
             adminMenu.DropDownItems.Add("Manage Alerts", null, OpenAlertsForm);
+
+            // Add Background Jobs menu item
+            backgroundJobsMenuItem = new ToolStripMenuItem("Manage Events");
+            backgroundJobsMenuItem.Click += BackgroundJobsMenuItem_Click;
+            adminMenu.DropDownItems.Add(backgroundJobsMenuItem);
 
             menuStrip.Items.Add(adminMenu);
 
@@ -270,7 +273,7 @@ namespace WindowsTaskbarApp.Forms
 
         private void BackgroundJobsMenuItem_Click(object sender, EventArgs e)
         {
-            var backgroundJobsForm = new BackgroundJobsForm(backgroundJobs);
+            var backgroundJobsForm = new EventsForm(backgroundJobs);
             backgroundJobsForm.ShowDialog();
         }
 
@@ -295,5 +298,24 @@ namespace WindowsTaskbarApp.Forms
             testXmlForm.Show();
         }
 
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            LinksEvents.LinksChanged += (s, args) => RefreshGroupLinksMenu();
+        }
+
+        private void RefreshGroupLinksMenu()
+        {
+            try
+            {
+                GroupLinksTrayIcon groupLinksTrayIcon = GroupLinksTrayIcon.Instance;
+                groupLinksTrayIcon.RefreshGroupLinksMenu();
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error refreshing group links menu: {ex.Message}", "Error");
+            }
+        }
     }
 }

@@ -1,6 +1,8 @@
 using System;
 using System.Data.SQLite;
+using System.Linq;
 using System.Windows.Forms;
+using WindowsTaskbarApp.Tools.GroupLinks;
 
 namespace WindowsTaskbarApp.Forms.Links
 {
@@ -113,6 +115,16 @@ namespace WindowsTaskbarApp.Forms.Links
                     }
 
                     command.ExecuteNonQuery();
+                }
+
+                // Ensure event is raised on the UI thread to avoid cross-thread exceptions
+                if (this.InvokeRequired)
+                {
+                    this.Invoke(new Action(() => LinksEvents.RaiseLinksChanged()));
+                }
+                else
+                {
+                    LinksEvents.RaiseLinksChanged();
                 }
 
                 this.DialogResult = DialogResult.OK; // Indicate success
