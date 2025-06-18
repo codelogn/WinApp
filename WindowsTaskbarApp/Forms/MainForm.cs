@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using WindowsTaskbarApp.Forms.Alerts;
 using WindowsTaskbarApp.Jobs;
-using WindowsTaskbarApp.Forms.Jobs;
+using WindowsTaskbarApp.Forms.Events;
 using WindowsTaskbarApp.Forms.Links;
 using WindowsTaskbarApp.Tools.GroupLinks;
 
@@ -113,6 +113,7 @@ namespace WindowsTaskbarApp.Forms
 
             // Initialize the overlay form
             overlayForm = new CountdownOverlayForm();
+            this.Load += new System.EventHandler(this.MainForm_Load);
         }
 
         private void MainForm_Load(object sender, EventArgs e)
@@ -273,8 +274,17 @@ namespace WindowsTaskbarApp.Forms
 
         private void BackgroundJobsMenuItem_Click(object sender, EventArgs e)
         {
-            var backgroundJobsForm = new EventsForm(backgroundJobs);
-            backgroundJobsForm.ShowDialog();
+            if (backgroundJobs != null)
+            {
+
+                var backgroundJobsForm = new EventsForm(backgroundJobs);
+                backgroundJobsForm.ShowDialog();
+            }
+            else
+            {
+                MessageBox.Show("Main form Background jobs instance is not initialized.");
+            }
+
         }
 
         private void BackgroundJobs_JobStatusUpdated(string message)
