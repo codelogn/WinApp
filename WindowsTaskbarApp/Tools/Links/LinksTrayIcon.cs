@@ -88,8 +88,8 @@ namespace WindowsTaskbarApp.Tools.Links
                 }
 
                 // Add a separator and the Exit option
-                trayMenu.Items.Add(new ToolStripSeparator());
-                trayMenu.Items.Add("Exit", null, (s, e) => ExitTrayApp());
+                //trayMenu.Items.Add(new ToolStripSeparator());
+                //trayMenu.Items.Add("Exit", null, (s, e) => ExitTrayApp());
             }
             catch (Exception ex)
             {
