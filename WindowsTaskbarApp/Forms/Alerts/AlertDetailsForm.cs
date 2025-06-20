@@ -33,14 +33,37 @@ namespace WindowsTaskbarApp.Forms.Alerts
         public string URL { get => urlTextBox.Text; set => urlTextBox.Text = value; }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public string HTTPMethod { get => methodComboBox.Text; set => methodComboBox.Text = value; }
+        public string HTTPMethod
+        {
+            get => txtHttpMethod.Text; // Use your TextBox name here
+            set => txtHttpMethod.Text = value ?? string.Empty;
+        }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string HTTPHeader { get => headerTextBox.Text; set => headerTextBox.Text = value; }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string HTTPBody { get => bodyTextBox.Text; set => bodyTextBox.Text = value; }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public string ContentType
+        {
+            get => txtContentType.Text;
+            set => txtContentType.Text = value ?? string.Empty;
+        }
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public string Accept
+        {
+            get => txtAccept.Text;
+            set => txtAccept.Text = value ?? string.Empty;
+        }
+
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public string UserAgent
+        {
+            get => txtUserAgent.Text;
+            set => txtUserAgent.Text = value ?? string.Empty;
+        }
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Enabled { get => enabledCheckBox.Checked ? "Yes" : "No"; set => enabledCheckBox.Checked = value == "Yes"; }
 
@@ -70,6 +93,10 @@ namespace WindowsTaskbarApp.Forms.Alerts
         private Button testWithKeywordsButton;
         private SQLiteConnection connection;
         private TextBox headerTextBox;
+        private TextBox txtHttpMethod; // Added TextBox for HTTP Method
+        private TextBox txtContentType;
+        private TextBox txtAccept;
+        private TextBox txtUserAgent;
 
         public event EventHandler AlertSaved;
 
@@ -139,12 +166,16 @@ namespace WindowsTaskbarApp.Forms.Alerts
             };
             requestLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
             requestLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70));
-
+            
             AddFieldToLayout(requestLayout, "URL:", urlTextBox = new TextBox { Dock = DockStyle.Fill });
-            AddFieldToLayout(requestLayout, "HTTP Method:", methodComboBox = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList });
-            methodComboBox.Items.AddRange(new string[] { "GET", "POST" });
-            AddFieldToLayout(requestLayout, "HTTP Body:", bodyTextBox = new TextBox { Dock = DockStyle.Fill, Multiline = true, Height = 100 });
+            AddFieldToLayout(requestLayout, "HTTP Method:", txtHttpMethod = new TextBox { Dock = DockStyle.Fill }); // Changed to TextBox
             AddFieldToLayout(requestLayout, "HTTP Header:", headerTextBox = new TextBox { Dock = DockStyle.Fill, Multiline = true, Height = 150 });
+            AddFieldToLayout(requestLayout, "HTTP Body:", bodyTextBox = new TextBox { Dock = DockStyle.Fill, Multiline = true, Height = 100 });
+
+            // New alerts table fields
+            AddFieldToLayout(requestLayout, "Content-Type:", txtContentType = new TextBox { Dock = DockStyle.Fill });
+            AddFieldToLayout(requestLayout, "Accept:", txtAccept = new TextBox { Dock = DockStyle.Fill });
+            AddFieldToLayout(requestLayout, "User-Agent:", txtUserAgent = new TextBox { Dock = DockStyle.Fill });
 
             requestGroup.Controls.Add(requestLayout);
             layoutPanel.Controls.Add(requestGroup);
@@ -233,6 +264,8 @@ namespace WindowsTaskbarApp.Forms.Alerts
             this.Text = "Alert Details";
             this.Size = new System.Drawing.Size(1000, 700);
             this.StartPosition = FormStartPosition.CenterScreen;
+
+
         }
 
         private void AddFieldToLayout(TableLayoutPanel layout, string labelText, Control control)
@@ -266,6 +299,9 @@ namespace WindowsTaskbarApp.Forms.Alerts
                     responseType: responseTypeComboBox.Text,
                     httpHeader: HTTPHeader,
                     executionType: ExecutionType, // Pass ExecutionType
+                    contentType: txtContentType.Text,
+                    accept: txtAccept.Text,
+                    userAgent: txtUserAgent.Text,
                     id: Id
                 );
 

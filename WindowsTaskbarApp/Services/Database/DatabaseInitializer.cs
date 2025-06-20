@@ -1,4 +1,5 @@
 using System;
+using System.Configuration;
 using System.Data.SQLite;
 using System.IO;
 
@@ -6,8 +7,8 @@ namespace WindowsTaskbarApp.Services.Database
 {
     public static class DatabaseInitializer
     {
-        private const string DatabaseFileName = "alerts.db";
-        private const string ConnectionString = "Data Source=alerts.db;Version=3;";
+        private static string ConnectionString => ConfigurationManager.ConnectionStrings["AllInOneDb"].ConnectionString;
+        private static string DatabaseFileName => new SQLiteConnectionStringBuilder(ConnectionString).DataSource;
 
         public static void Initialize()
         {
@@ -70,10 +71,13 @@ namespace WindowsTaskbarApp.Services.Database
                     URL TEXT NOT NULL,
                     HTTPMethod TEXT NOT NULL,
                     HTTPBody TEXT,
+                    HTTPHeader TEXT,
+                    ContentType TEXT,
+                    Accept TEXT,
+                    UserAgent TEXT,
                     Enabled TEXT NOT NULL,
                     ResponseType TEXT DEFAULT 'JSON',
                     ExecutionType TEXT DEFAULT 'Win Alert',
-                    HTTPHeader TEXT,
                     LastTriggered TEXT
                 );";
 

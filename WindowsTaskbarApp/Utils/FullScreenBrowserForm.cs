@@ -138,17 +138,16 @@ namespace WindowsTaskbarApp.Utils
             }
         }
 
-        private void RefreshTimer_Tick(object sender, EventArgs e)
+        private async void RefreshTimer_Tick(object sender, EventArgs e)
         {
-            remainingSeconds--;
-
-            if (remainingSeconds <= 0)
+            if (webView.CoreWebView2 == null)
             {
-                remainingSeconds = refreshIntervalMinutes * 60;
-                this.webView.Reload();
+                await webView.EnsureCoreWebView2Async();
             }
-
-            countdownLabel.Text = FormatTime(remainingSeconds);
+            if (webView.CoreWebView2 != null)
+            {
+                webView.Reload();
+            }
         }
 
         private string FormatTime(int seconds)

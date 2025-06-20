@@ -9,6 +9,7 @@ using WindowsTaskbarApp.Utils;
 using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
 using System.Collections.Generic;
+using System.Configuration;
 
 namespace WindowsTaskbarApp.Forms.Alerts
 {
@@ -114,6 +115,28 @@ namespace WindowsTaskbarApp.Forms.Alerts
                 DataPropertyName = "HTTPBody"
             });
 
+              // Add new columns for ContentType, Accept, and UserAgent in InitializeComponent()
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "ContentType",
+                HeaderText = "Content-Type",
+                DataPropertyName = "ContentType"
+            });
+
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "Accept",
+                HeaderText = "Accept",
+                DataPropertyName = "Accept"
+            });
+
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "UserAgent",
+                HeaderText = "User-Agent",
+                DataPropertyName = "UserAgent"
+            });          
+
             alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "Enabled",
@@ -187,7 +210,8 @@ namespace WindowsTaskbarApp.Forms.Alerts
             DatabaseInitializer.Initialize();
 
             // Open the SQLite connection
-            connection = new SQLiteConnection("Data Source=alerts.db;Version=3;");
+            string connectionString = ConfigurationManager.ConnectionStrings["AllInOneDb"].ConnectionString;
+            connection = new SQLiteConnection(connectionString);
             await connection.OpenAsync();
         }
 
@@ -244,6 +268,10 @@ namespace WindowsTaskbarApp.Forms.Alerts
                     detailsForm.ResponseType = alertsGridView.Rows[e.RowIndex].Cells["ResponseType"].Value?.ToString();
                     detailsForm.ExecutionType = alertsGridView.Rows[e.RowIndex].Cells["ExecutionType"].Value?.ToString();
                     detailsForm.HTTPHeader = alertsGridView.Rows[e.RowIndex].Cells["HTTPHeader"].Value?.ToString();
+                    // Add new fields
+                    detailsForm.ContentType = alertsGridView.Rows[e.RowIndex].Cells["ContentType"].Value?.ToString();
+                    detailsForm.Accept = alertsGridView.Rows[e.RowIndex].Cells["Accept"].Value?.ToString();
+                    detailsForm.UserAgent = alertsGridView.Rows[e.RowIndex].Cells["UserAgent"].Value?.ToString();
 
                     // Subscribe to the AlertSaved event
                     detailsForm.AlertSaved += async (s, args) =>

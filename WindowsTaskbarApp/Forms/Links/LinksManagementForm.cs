@@ -1,4 +1,5 @@
 using System;
+using System.Configuration;
 using System.Data;
 using System.Data.SQLite;
 using System.Threading.Tasks;
@@ -49,7 +50,8 @@ namespace WindowsTaskbarApp.Forms.Links
             try
             {
                 // Initialize SQLite connection
-                connection = new SQLiteConnection("Data Source=alerts.db;Version=3;");
+                string connectionString = ConfigurationManager.ConnectionStrings["AllInOneDb"].ConnectionString;
+                connection = new SQLiteConnection(connectionString);
                 await connection.OpenAsync();
             }
             catch (Exception ex)
