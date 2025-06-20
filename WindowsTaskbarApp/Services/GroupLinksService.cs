@@ -3,13 +3,14 @@ using System.Windows.Forms;
 using System.Data.SQLite;
 using System.Linq;
 using System.Diagnostics;
+using System.Configuration;
 
 public static class GroupLinksService
 {
     public static List<string> GetAllTags()
     {
             var tagsSet = new HashSet<string>();
-            string connectionString = "Data Source=alerts.db;Version=3;";
+            string connectionString = ConfigurationManager.ConnectionStrings["AllInOneDb"].ConnectionString;
 
             using (var connection = new SQLiteConnection(connectionString))
             {
@@ -39,7 +40,7 @@ public static class GroupLinksService
 
     public static void OpenLinksByTag(string tag)
     {
-        string connectionString = "Data Source=alerts.db;Version=3;";
+        string connectionString = ConfigurationManager.ConnectionStrings["AllInOneDb"].ConnectionString;
         var Links = new List<string>();
 
         using (var connection = new SQLiteConnection(connectionString))

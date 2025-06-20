@@ -1,4 +1,5 @@
 using System;
+using System.Configuration;
 using System.Data.SQLite;
 using System.Diagnostics;
 using System.Drawing;
@@ -69,7 +70,8 @@ namespace WindowsTaskbarApp.Tools.Links
                 trayMenu.Items.Clear();
 
                 // Connect to the SQLite database
-                connection = new SQLiteConnection("Data Source=alerts.db;Version=3;");
+                string connectionString = ConfigurationManager.ConnectionStrings["AllInOneDb"].ConnectionString;
+                connection = new SQLiteConnection(connectionString);
                 connection.Open();
 
                 var query = "SELECT Title, Link FROM links";

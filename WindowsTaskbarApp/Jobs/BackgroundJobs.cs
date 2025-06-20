@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data.SQLite;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -46,7 +47,8 @@ namespace WindowsTaskbarApp.Jobs
             var now = DateTime.Now;
             int currentMinute = now.Minute;
 
-            using (var connection = new SQLiteConnection("Data Source=alerts.db;Version=3;"))
+            string connectionString = ConfigurationManager.ConnectionStrings["AllInOneDb"].ConnectionString;
+            using (var connection = new SQLiteConnection(connectionString))
             {
                 connection.Open();
 
