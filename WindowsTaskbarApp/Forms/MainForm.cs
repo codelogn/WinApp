@@ -6,6 +6,10 @@ using WindowsTaskbarApp.Jobs;
 using WindowsTaskbarApp.Forms.Events;
 using WindowsTaskbarApp.Forms.Links;
 using WindowsTaskbarApp.Tools.GroupLinks;
+using WindowsTaskbarApp.Tools.MiniWebBrowser;
+using System.Reflection;
+using WindowsTaskbarApp.Tools;
+using WindowsTaskbarApp.Tools.AudioPlayer;
 
 namespace WindowsTaskbarApp.Forms
 {
@@ -28,7 +32,8 @@ namespace WindowsTaskbarApp.Forms
         public MainForm()
         {
             // Initialize the form
-            this.Text = "Main Application";
+            var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "";
+            this.Text = $"Main Application v{version}";
             this.Size = new Size(400, 300);
 
             // Create a MenuStrip
@@ -41,7 +46,7 @@ namespace WindowsTaskbarApp.Forms
 
             // Add "Tools" menu
             var toolsMenu = new ToolStripMenuItem("Tools");
-            toolsMenu.DropDownItems.Add("Open Web", null, OpenWeb); // Moved from "File" to "Tools"
+            toolsMenu.DropDownItems.Add("Open Web Browser - Custom", null, OpenWeb); // Moved from "File" to "Tools"
             toolsMenu.DropDownItems.Add("Text to Speech", null, OpenTextToSpeechForm); // Moved from "File" to "Tools"
             toolsMenu.DropDownItems.Add("Countdown Timer", null, OpenCountdownTimerForm);
 
@@ -63,7 +68,7 @@ namespace WindowsTaskbarApp.Forms
 
 
             // Add "Open Web Browser" menu item
-            var openWebBrowserMenuItem = new ToolStripMenuItem("Open Web Browser");
+            var openWebBrowserMenuItem = new ToolStripMenuItem("Open Mini Web Browser");
             openWebBrowserMenuItem.Click += OpenWebBrowserForm;
             toolsMenu.DropDownItems.Add(openWebBrowserMenuItem);
 
@@ -74,6 +79,20 @@ namespace WindowsTaskbarApp.Forms
             var testXmlMenuItem = new ToolStripMenuItem("Test XML");
             testXmlMenuItem.Click += OpenTestXmlForm;
             testMenu.DropDownItems.Add(testXmlMenuItem);
+
+            // Add "Test Audio" submenu under Test
+            var testAudioMenuItem = new ToolStripMenuItem("Test Audio");
+            testAudioMenuItem.Click += (s, e) =>
+            {
+                var audioPlayerForm = new AudioPlayerForm();
+                audioPlayerForm.Show();
+            };
+            testMenu.DropDownItems.Add(testAudioMenuItem);
+
+            // Add "Show Hello Notification" submenu under Test
+            var helloNotificationMenuItem = new ToolStripMenuItem("Show Hello Notification");
+            helloNotificationMenuItem.Click += ShowHelloNotification;
+            testMenu.DropDownItems.Add(helloNotificationMenuItem);
 
             // Add Test menu to Tools menu
             toolsMenu.DropDownItems.Add(testMenu);
@@ -306,6 +325,34 @@ namespace WindowsTaskbarApp.Forms
         {
             var testXmlForm = new TestXmlForm();
             testXmlForm.Show();
+        }
+
+        private void ShowHelloNotification(object sender, EventArgs e)
+        {
+            if (notifyIcon == null)
+            {
+                notifyIcon = new NotifyIcon
+                {
+                    Visible = true,
+                    Icon = SystemIcons.Information,
+                    BalloonTipTitle = "Notification",
+                    BalloonTipText = "Hello World"
+                };
+                notifyIcon.BalloonTipClicked += NotifyIcon_BalloonTipClicked;
+            }
+            notifyIcon.BalloonTipTitle = "Notification";
+            notifyIcon.BalloonTipText = "Hello World";
+            notifyIcon.ShowBalloonTip(3000);
+        }
+
+        private void NotifyIcon_BalloonTipClicked(object sender, EventArgs e)
+        {
+            // Open a URL in the default browser
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "https://www.google.com",
+                UseShellExecute = true
+            });
         }
 
         protected override void OnLoad(EventArgs e)
