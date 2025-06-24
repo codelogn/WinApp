@@ -2,7 +2,7 @@ using System;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.WinForms;
 
-namespace WindowsTaskbarApp.Forms
+namespace WindowsTaskbarApp.Tools.MiniWebBrowser
 {
     public partial class WebBrowserForm : Form
     {
@@ -46,6 +46,11 @@ namespace WindowsTaskbarApp.Forms
             webView.CoreWebView2InitializationCompleted += (s, e) =>
             {
                 // You can handle post-initialization logic here if needed
+                // Set homepage to google.com on first load
+                if (webView.CoreWebView2 != null)
+                {
+                    webView.CoreWebView2.Navigate("https://www.google.com");
+                }
             };
 
             // Initialize URL TextBox
@@ -53,6 +58,16 @@ namespace WindowsTaskbarApp.Forms
             {
                 Dock = DockStyle.Top,
                 PlaceholderText = "Enter URL here..."
+            };
+            // Make Enter key trigger LoadButton_Click
+            urlTextBox.KeyDown += (sender, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    LoadButton_Click(sender, EventArgs.Empty);
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                }
             };
 
             // Initialize Load Button
@@ -139,7 +154,12 @@ namespace WindowsTaskbarApp.Forms
             {
                 try
                 {
-                    webView.CoreWebView2.Navigate(urlTextBox.Text);
+                    string url = urlTextBox.Text.Trim();
+                    if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    {
+                        url = "https://" + url;
+                    }
+                    webView.CoreWebView2.Navigate(url);
                 }
                 catch (Exception ex)
                 {

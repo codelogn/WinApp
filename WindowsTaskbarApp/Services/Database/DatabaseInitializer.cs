@@ -31,6 +31,9 @@ namespace WindowsTaskbarApp.Services.Database
 
                     // Create the alerts table
                     CreateAlertsTable(connection);
+
+                    // Create the logs table
+                    CreateLogsTable(connection);
                 }
             }
             catch (Exception ex)
@@ -82,6 +85,24 @@ namespace WindowsTaskbarApp.Services.Database
                 );";
 
             using (var command = new SQLiteCommand(createAlertsTableQuery, connection))
+            {
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void CreateLogsTable(SQLiteConnection connection)
+        {
+            var createLogsTableQuery = @"
+                CREATE TABLE IF NOT EXISTS Logs (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Timestamp DATETIME NOT NULL,
+                    Level TEXT NOT NULL,
+                    Message TEXT NOT NULL,
+                    Source TEXT,
+                    Exception TEXT
+                );";
+
+            using (var command = new SQLiteCommand(createLogsTableQuery, connection))
             {
                 command.ExecuteNonQuery();
             }

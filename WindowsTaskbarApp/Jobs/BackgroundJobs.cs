@@ -4,6 +4,7 @@ using System.Configuration;
 using System.Data.SQLite;
 using System.Net.Http;
 using System.Threading.Tasks;
+using WindowsTaskbarApp.Utils;
 
 namespace WindowsTaskbarApp.Jobs
 {
@@ -163,9 +164,10 @@ namespace WindowsTaskbarApp.Jobs
         }
 
         // You can add a method to append logs from anywhere in the class
-        public void AddLog(string message)
+        public void AddLog(string message, string level = "INFO", string source = null, string exception = null)
         {
             Logs += $"[{DateTime.Now}] {message}\n";
+            LogUtil.AddLog(message, level, source ?? nameof(BackgroundJobs), exception);
         }
         
         public void ClearLogs()
