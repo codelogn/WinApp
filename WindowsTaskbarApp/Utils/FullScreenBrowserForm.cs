@@ -18,6 +18,7 @@ namespace WindowsTaskbarApp.Utils
         private readonly Button refreshButton;
         private int remainingSeconds;
         private bool isFullScreen = true; // Start in full-screen mode by default
+        private bool hasNavigated = false; // Track successful navigation
 
         public FullScreenBrowserForm(string url, int refreshIntervalMinutes)
         {
@@ -95,9 +96,10 @@ namespace WindowsTaskbarApp.Utils
             refreshButton.FlatAppearance.BorderSize = 0;
             refreshButton.Click += (sender, e) =>
             {
-                this.webView.Reload();
-                this.remainingSeconds = refreshIntervalMinutes * 60; // Reset the countdown
-                countdownLabel.Text = FormatTime(remainingSeconds); // Update the countdown label
+                if (webView != null && !webView.IsDisposed && webView.CoreWebView2 != null)
+                {
+                    webView.CoreWebView2.Reload();
+                }
             };
             this.Controls.Add(refreshButton);
 
@@ -130,23 +132,67 @@ namespace WindowsTaskbarApp.Utils
             // Optionally handle navigation starting events
         }
 
+        
         private void WebView_NavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
         {
+            if (e.IsSuccess)
+            {
+                hasNavigated = true;
+            }
+            
             if (!e.IsSuccess)
             {
-                MessageBox.Show("Failed to load the page.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                string errorMessage = $"Failed to load the page. Error: {e.WebErrorStatus}";
+                if (e.WebErrorStatus == CoreWebView2WebErrorStatus.ConnectionAborted ||
+                    e.WebErrorStatus == CoreWebView2WebErrorStatus.ConnectionReset)
+                {
+                    errorMessage += "\nPlease check your internet connection or the URL.";
+                }
+                MessageBox.Show(errorMessage, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            
         }
+       
 
         private async void RefreshTimer_Tick(object sender, EventArgs e)
         {
-            if (webView.CoreWebView2 == null)
+            if (this.IsDisposed || webView == null || webView.IsDisposed)
+                return;
+
+            // Countdown logic
+            if (remainingSeconds > 0)
             {
-                await webView.EnsureCoreWebView2Async();
+                remainingSeconds--;
+                countdownLabel.Text = FormatTime(remainingSeconds);
             }
-            if (webView.CoreWebView2 != null)
+
+            // Only refresh when countdown reaches zero and navigation has occurred
+            if (remainingSeconds == 0 && hasNavigated)
             {
-                webView.Reload();
+                try
+                {
+                    if (webView.CoreWebView2 == null)
+                    {
+                        await webView.EnsureCoreWebView2Async();
+                    }
+                    if (webView.CoreWebView2 != null)
+                    {
+                        webView.CoreWebView2.Reload();
+                        remainingSeconds = refreshIntervalMinutes * 60; // Reset countdown
+                    }
+                }
+                catch (ObjectDisposedException)
+                {
+                    // The control was disposed, ignore
+                }
+                catch (System.Runtime.InteropServices.COMException)
+                {
+                    // The WebView2 instance is not in a valid state, ignore
+                }
+                catch (Exception ex)
+                {
+                    // Optionally log or show the error
+                }
             }
         }
 

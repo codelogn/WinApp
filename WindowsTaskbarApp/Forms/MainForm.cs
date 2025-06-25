@@ -111,6 +111,9 @@ namespace WindowsTaskbarApp.Forms
             backgroundJobsMenuItem.Click += BackgroundJobsMenuItem_Click;
             adminMenu.DropDownItems.Add(backgroundJobsMenuItem);
 
+            // Add "Manage Configurations" submenu under Admin menu
+            adminMenu.DropDownItems.Add("Manage Configurations", null, OpenManageConfigurationsForm);
+
             menuStrip.Items.Add(adminMenu);
 
             // Add "Help" menu after "Tools"
@@ -373,6 +376,12 @@ namespace WindowsTaskbarApp.Forms
             {
                 MessageBox.Show($"Error refreshing group links menu: {ex.Message}", "Error");
             }
+        }
+
+        private void OpenManageConfigurationsForm(object sender, EventArgs e)
+        {
+            var configForm = new WindowsTaskbarApp.Forms.Configurations.ManageConfigurationForm();
+            configForm.ShowDialog();
         }
     }
 }
