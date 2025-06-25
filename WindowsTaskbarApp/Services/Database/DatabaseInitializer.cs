@@ -34,6 +34,9 @@ namespace WindowsTaskbarApp.Services.Database
 
                     // Create the logs table
                     CreateLogsTable(connection);
+
+                    // Create the configurations table
+                    CreateConfigurationsTable(connection);
                 }
             }
             catch (Exception ex)
@@ -107,5 +110,22 @@ namespace WindowsTaskbarApp.Services.Database
                 command.ExecuteNonQuery();
             }
         }
+
+        private static void CreateConfigurationsTable(SQLiteConnection connection)
+        {
+            var createConfigurationsTableQuery = @"
+                CREATE TABLE IF NOT EXISTS Configurations (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Name TEXT,
+                    Key TEXT NOT NULL,
+                    Value TEXT
+                );";
+
+            using (var command = new SQLiteCommand(createConfigurationsTableQuery, connection))
+            {
+                command.ExecuteNonQuery();
+            }
+        }
+
     }
 }

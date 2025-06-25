@@ -1,5 +1,6 @@
-- Start events 
+- Start events - Done
+- Add a settings window to change the configuration - 
 - Add auto start for the groups links
 - Refactor code centralize .db configurations 
-- Add release version to the main window title
+- Add release version to the main window title - Done
 - 

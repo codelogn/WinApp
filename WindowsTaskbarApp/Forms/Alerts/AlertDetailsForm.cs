@@ -110,7 +110,7 @@ namespace WindowsTaskbarApp.Forms.Alerts
         {
             var layoutPanel = new TableLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
                 ColumnCount = 1,
                 Padding = new Padding(10),
                 AutoSize = true,
@@ -258,7 +258,15 @@ namespace WindowsTaskbarApp.Forms.Alerts
             buttonPanel.Controls.Add(testButton);
             buttonPanel.Controls.Add(testWithKeywordsButton);
 
-            this.Controls.Add(layoutPanel);
+            // Add layoutPanel to a scrollable panel
+            var scrollPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true
+            };
+            scrollPanel.Controls.Add(layoutPanel);
+
+            this.Controls.Add(scrollPanel);
             this.Controls.Add(buttonPanel);
 
             this.Text = "Alert Details";
