@@ -3,7 +3,7 @@ using System.Speech.Synthesis;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace WindowsTaskbarApp.Forms
+namespace WindowsTaskbarApp.Tools.TextToSpeech
 {
     public class TextToSpeechForm : Form
     {

@@ -12,7 +12,8 @@ namespace WindowsTaskbarApp.Utils
             SQLiteConnection connection,
             string topic,
             string lastUpdatedTime,
-            string minutes,
+            string browserRefreshMinutes,
+            string checkIntervalMinutes,
             string keywords,
             string query,
             string url,
@@ -37,7 +38,7 @@ namespace WindowsTaskbarApp.Utils
             {
                 command.CommandText = @"
                     UPDATE Alerts
-                    SET Topic = @topic, LastUpdatedTime = @lastUpdatedTime, Minutes = @minutes, Keywords = @keywords,
+                    SET Topic = @topic, LastUpdatedTime = @lastUpdatedTime, BrowserRefreshMinutes = @browserRefreshMinutes, CheckIntervalMinutes = @checkIntervalMinutes, Keywords = @keywords,
                         Query = @query, URL = @url, HTTPMethod = @httpMethod, HTTPBody = @httpBody, Enabled = @enabled, 
                         LastTriggered = @lastTriggered, ResponseType = @responseType, HTTPHeader = @httpHeader,
                         ExecutionType = @executionType,
@@ -48,16 +49,17 @@ namespace WindowsTaskbarApp.Utils
             else // Insert new alert
             {
                 command.CommandText = @"
-                    INSERT INTO Alerts (Topic, LastUpdatedTime, Minutes, Keywords, Query, URL, HTTPMethod, HTTPBody, Enabled, 
+                    INSERT INTO Alerts (Topic, LastUpdatedTime, BrowserRefreshMinutes, CheckIntervalMinutes, Keywords, Query, URL, HTTPMethod, HTTPBody, Enabled, 
                                         LastTriggered, ResponseType, HTTPHeader, ExecutionType, ContentType, Accept, UserAgent)
-                    VALUES (@topic, @lastUpdatedTime, @minutes, @keywords, @query, @url, @httpMethod, @httpBody, @enabled, 
+                    VALUES (@topic, @lastUpdatedTime, @browserRefreshMinutes, @checkIntervalMinutes, @keywords, @query, @url, @httpMethod, @httpBody, @enabled, 
                             @lastTriggered, @responseType, @httpHeader, @executionType, @contentType, @accept, @userAgent)";
             }
 
             // Add parameters
             command.Parameters.AddWithValue("@topic", topic);
             command.Parameters.AddWithValue("@lastUpdatedTime", DateTime.Now);
-            command.Parameters.AddWithValue("@minutes", minutes);
+            command.Parameters.AddWithValue("@browserRefreshMinutes", browserRefreshMinutes);
+            command.Parameters.AddWithValue("@checkIntervalMinutes", checkIntervalMinutes);
             command.Parameters.AddWithValue("@keywords", keywords);
             command.Parameters.AddWithValue("@query", query);
             command.Parameters.AddWithValue("@url", url);

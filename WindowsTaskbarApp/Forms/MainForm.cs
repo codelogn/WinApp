@@ -3,13 +3,16 @@ using System.Drawing;
 using System.Windows.Forms;
 using WindowsTaskbarApp.Forms.Alerts;
 using WindowsTaskbarApp.Jobs;
-using WindowsTaskbarApp.Forms.Events;
 using WindowsTaskbarApp.Forms.Links;
 using WindowsTaskbarApp.Tools.GroupLinks;
 using WindowsTaskbarApp.Tools.MiniWebBrowser;
 using System.Reflection;
 using WindowsTaskbarApp.Tools;
 using WindowsTaskbarApp.Tools.AudioPlayer;
+using WindowsTaskbarApp.Forms.Jobs;
+using WindowsTaskbarApp.Tools.TextToSpeech;
+using WindowsTaskbarApp.Tools.Events;
+using WindowsTaskbarApp.Forms.Logs;
 
 namespace WindowsTaskbarApp.Forms
 {
@@ -47,7 +50,8 @@ namespace WindowsTaskbarApp.Forms
             // Add "Tools" menu
             var toolsMenu = new ToolStripMenuItem("Tools");
             toolsMenu.DropDownItems.Add("Open Web Browser - Custom", null, OpenWeb); // Moved from "File" to "Tools"
-            toolsMenu.DropDownItems.Add("Text to Speech", null, OpenTextToSpeechForm); // Moved from "File" to "Tools"
+
+            // Add "Countdown Timer" menu item
             toolsMenu.DropDownItems.Add("Countdown Timer", null, OpenCountdownTimerForm);
 
             // Add "Clock Countdown" menu item
@@ -80,6 +84,11 @@ namespace WindowsTaskbarApp.Forms
             testXmlMenuItem.Click += OpenTestXmlForm;
             testMenu.DropDownItems.Add(testXmlMenuItem);
 
+            // Add "Text to Speech" submenu under Test
+            var testTextToSpeechMenuItem = new ToolStripMenuItem("Text to Speech");
+            testTextToSpeechMenuItem.Click += OpenTextToSpeechForm;
+            testMenu.DropDownItems.Add(testTextToSpeechMenuItem);
+
             // Add "Test Audio" submenu under Test
             var testAudioMenuItem = new ToolStripMenuItem("Test Audio");
             testAudioMenuItem.Click += (s, e) =>
@@ -97,6 +106,15 @@ namespace WindowsTaskbarApp.Forms
             // Add Test menu to Tools menu
             toolsMenu.DropDownItems.Add(testMenu);
 
+            // Add "Events" menu item under Tools
+            var eventsMenuItem = new ToolStripMenuItem("Events");
+            eventsMenuItem.Click += (s, e) =>
+            {
+                var eventsViewerForm = new EventsViewerForm();
+                eventsViewerForm.Show();
+            };
+            toolsMenu.DropDownItems.Add(eventsMenuItem);
+
             menuStrip.Items.Add(toolsMenu);
 
             // Add "Admin" menu between "Tools" and "Help"
@@ -107,12 +125,19 @@ namespace WindowsTaskbarApp.Forms
             adminMenu.DropDownItems.Add("Manage Alerts", null, OpenAlertsForm);
 
             // Add Background Jobs menu item
-            backgroundJobsMenuItem = new ToolStripMenuItem("Manage Events");
+            backgroundJobsMenuItem = new ToolStripMenuItem("Manage Jobs");
             backgroundJobsMenuItem.Click += BackgroundJobsMenuItem_Click;
             adminMenu.DropDownItems.Add(backgroundJobsMenuItem);
 
             // Add "Manage Configurations" submenu under Admin menu
             adminMenu.DropDownItems.Add("Manage Configurations", null, OpenManageConfigurationsForm);
+
+            // Add "Manage Logs" submenu under Admin menu
+            adminMenu.DropDownItems.Add("Manage Logs", null, (s, e) =>
+            {
+                var logsViewerForm = new LogsViewerForm();
+                logsViewerForm.Show();
+            });
 
             menuStrip.Items.Add(adminMenu);
 
@@ -299,7 +324,7 @@ namespace WindowsTaskbarApp.Forms
             if (backgroundJobs != null)
             {
 
-                var backgroundJobsForm = new EventsForm(backgroundJobs);
+                var backgroundJobsForm = new JobsForm(backgroundJobs);
                 backgroundJobsForm.ShowDialog();
             }
             else

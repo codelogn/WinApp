@@ -24,6 +24,12 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
             try
             {
                 await webView.EnsureCoreWebView2Async();
+                // Set default URL
+                urlTextBox.Text = "https://www.google.com";
+                if (webView.CoreWebView2 != null)
+                {
+                    webView.CoreWebView2.Navigate(urlTextBox.Text);
+                }
             }
             catch (Exception ex)
             {
@@ -42,24 +48,12 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
                 Dock = DockStyle.Fill
             };
 
-            // Ensure CoreWebView2 is initialized synchronously
-            webView.CoreWebView2InitializationCompleted += (s, e) =>
-            {
-                // You can handle post-initialization logic here if needed
-                // Set homepage to google.com on first load
-                if (webView.CoreWebView2 != null)
-                {
-                    webView.CoreWebView2.Navigate("https://www.google.com");
-                }
-            };
-
             // Initialize URL TextBox
             urlTextBox = new TextBox
             {
-                Dock = DockStyle.Top,
+                Dock = DockStyle.Fill,
                 PlaceholderText = "Enter URL here..."
             };
-            // Make Enter key trigger LoadButton_Click
             urlTextBox.KeyDown += (sender, e) =>
             {
                 if (e.KeyCode == Keys.Enter)
@@ -70,13 +64,30 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
                 }
             };
 
-            // Initialize Load Button
+            // Initialize Load Button (small, next to URL box)
             loadButton = new Button
             {
                 Text = "Load",
-                Dock = DockStyle.Top
+                Width = 60,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(2, 0, 2, 0)
             };
             loadButton.Click += LoadButton_Click;
+
+            // TableLayoutPanel for URL and Load button
+            var urlPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                Height = 28,
+                ColumnCount = 2,
+                RowCount = 1,
+                Padding = new Padding(2),
+                AutoSize = true
+            };
+            urlPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            urlPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));
+            urlPanel.Controls.Add(urlTextBox, 0, 0);
+            urlPanel.Controls.Add(loadButton, 1, 0);
 
             // Initialize ToolStrip
             browserToolStrip = new ToolStrip
@@ -127,18 +138,14 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
             var homeButton = new ToolStripButton("Home");
             homeButton.Click += (sender, e) =>
             {
-                if (!string.IsNullOrWhiteSpace(urlTextBox.Text) && webView.CoreWebView2 != null)
-                {
-                    webView.CoreWebView2.Navigate(urlTextBox.Text);
-                }
+                LoadButton_Click(sender, e);
             };
             browserToolStrip.Items.Add(homeButton);
 
             // Add controls to the form
             this.Controls.Add(webView);
             this.Controls.Add(browserToolStrip);
-            this.Controls.Add(loadButton);
-            this.Controls.Add(urlTextBox);
+            this.Controls.Add(urlPanel); // Add urlPanel instead of urlTextBox and loadButton separately
 
             // Update button states based on navigation
             webView.NavigationStarting += (sender, e) =>
@@ -150,21 +157,36 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
 
         private void LoadButton_Click(object sender, EventArgs e)
         {
-            if (!string.IsNullOrWhiteSpace(urlTextBox.Text) && webView.CoreWebView2 != null)
+            if (webView.CoreWebView2 == null)
+                return;
+
+            string url = urlTextBox.Text.Trim();
+            if (string.IsNullOrWhiteSpace(url))
+                return;
+
+            // Prepend https:// if missing
+            if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                url = "https://" + url;
+            }
+
+            // Validate URL
+            if (Uri.TryCreate(url, UriKind.Absolute, out Uri uriResult) &&
+                (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
             {
                 try
                 {
-                    string url = urlTextBox.Text.Trim();
-                    if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                    {
-                        url = "https://" + url;
-                    }
                     webView.CoreWebView2.Navigate(url);
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show($"Failed to load URL: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
+            }
+            else
+            {
+                MessageBox.Show("Please enter a valid URL.", "Invalid URL", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
     }
