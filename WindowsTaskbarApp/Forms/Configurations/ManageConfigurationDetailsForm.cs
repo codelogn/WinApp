@@ -35,15 +35,36 @@ namespace WindowsTaskbarApp.Forms.Configurations
 
         private void InitializeComponent()
         {
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(20), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70));
-            layout.Controls.Add(new Label { Text = "Name:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill }, 0, 0);
-            layout.Controls.Add(nameTextBox = new TextBox { Dock = DockStyle.Fill }, 1, 0);
-            layout.Controls.Add(new Label { Text = "Key:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill }, 0, 1);
-            layout.Controls.Add(keyTextBox = new TextBox { Dock = DockStyle.Fill }, 1, 1);
-            layout.Controls.Add(new Label { Text = "Value:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill }, 0, 2);
-            layout.Controls.Add(valueTextBox = new TextBox { Dock = DockStyle.Fill }, 1, 2);
+            var layout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 3,
+                Padding = new Padding(20),
+                AutoSize = false,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink
+            };
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90)); // Fixed width for labels
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); // Fill for fields
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33F));
+
+            var nameLabel = new Label { Text = "Name:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
+            nameTextBox = new TextBox { Dock = DockStyle.Fill, Anchor = AnchorStyles.Left | AnchorStyles.Right };
+            layout.Controls.Add(nameLabel, 0, 0);
+            layout.Controls.Add(nameTextBox, 1, 0);
+
+            var keyLabel = new Label { Text = "Key:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
+            keyTextBox = new TextBox { Dock = DockStyle.Fill, Anchor = AnchorStyles.Left | AnchorStyles.Right };
+            layout.Controls.Add(keyLabel, 0, 1);
+            layout.Controls.Add(keyTextBox, 1, 1);
+
+            var valueLabel = new Label { Text = "Value:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
+            valueTextBox = new TextBox { Dock = DockStyle.Fill, Anchor = AnchorStyles.Left | AnchorStyles.Right };
+            layout.Controls.Add(valueLabel, 0, 2);
+            layout.Controls.Add(valueTextBox, 1, 2);
+
             saveButton = new Button { Text = "Save", AutoSize = true, BackColor = Color.DarkBlue, ForeColor = Color.White, Font = new Font("Arial", 10, FontStyle.Bold) };
             saveButton.Click += SaveButton_Click;
             var buttonPanel = new FlowLayoutPanel { Dock = DockStyle.Bottom, FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(10), AutoSize = true };

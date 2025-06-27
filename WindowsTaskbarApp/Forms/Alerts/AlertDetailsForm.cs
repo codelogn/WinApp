@@ -21,7 +21,7 @@ namespace WindowsTaskbarApp.Forms.Alerts
         public string LastUpdatedTime { get => timeTextBox.Text; set => timeTextBox.Text = value; }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public string Minutes { get => minutesTextBox.Text; set => minutesTextBox.Text = value; }
+        public string BrowserRefreshMinutes { get => minutesTextBox.Text; set => minutesTextBox.Text = value; }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Keywords { get => keywordsTextBox.Text; set => keywordsTextBox.Text = value; }
@@ -68,13 +68,16 @@ namespace WindowsTaskbarApp.Forms.Alerts
         public string Enabled { get => enabledCheckBox.Checked ? "Yes" : "No"; set => enabledCheckBox.Checked = value == "Yes"; }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public string LastTriggered { get => lastTriggeredPicker.Value.ToString("yyyy-MM-dd HH:mm:ss"); set => lastTriggeredPicker.Value = DateTime.TryParse(value, out var date) ? date : DateTime.Now; }
+        public string LastTriggered { get => lastTriggeredTextBox.Text; set => lastTriggeredTextBox.Text = value; }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string ResponseType { get => responseTypeComboBox.Text; set => responseTypeComboBox.Text = value; }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string ExecutionType { get => executionTypeComboBox.Text; set => executionTypeComboBox.Text = value; }
+
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public string CheckIntervalMinutes { get => checkIntervalMinutesTextBox.Text; set => checkIntervalMinutesTextBox.Text = value; }
 
         private TextBox topicTextBox;
         private TextBox timeTextBox;
@@ -85,7 +88,7 @@ namespace WindowsTaskbarApp.Forms.Alerts
         private ComboBox methodComboBox;
         private TextBox bodyTextBox;
         private CheckBox enabledCheckBox;
-        private DateTimePicker lastTriggeredPicker;
+        private TextBox lastTriggeredTextBox;
         private ComboBox responseTypeComboBox;
         private ComboBox executionTypeComboBox;
         private Button saveButton;
@@ -97,6 +100,7 @@ namespace WindowsTaskbarApp.Forms.Alerts
         private TextBox txtContentType;
         private TextBox txtAccept;
         private TextBox txtUserAgent;
+        private TextBox checkIntervalMinutesTextBox;
 
         public event EventHandler AlertSaved;
 
@@ -136,15 +140,11 @@ namespace WindowsTaskbarApp.Forms.Alerts
             generalLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70));
 
             AddFieldToLayout(generalLayout, "Enabled:", enabledCheckBox = new CheckBox { Dock = DockStyle.Left });
-            AddFieldToLayout(generalLayout, "Last Triggered:", lastTriggeredPicker = new DateTimePicker
-            {
-                Dock = DockStyle.Fill,
-                Format = DateTimePickerFormat.Custom,
-                CustomFormat = "yyyy-MM-dd HH:mm:ss"
-            });
+            AddFieldToLayout(generalLayout, "Last Triggered:", lastTriggeredTextBox = new TextBox { Dock = DockStyle.Fill, ReadOnly = true });
             AddFieldToLayout(generalLayout, "Last Updated:", timeTextBox = new TextBox { Dock = DockStyle.Fill });
             AddFieldToLayout(generalLayout, "Topic:", topicTextBox = new TextBox { Dock = DockStyle.Fill });
-            AddFieldToLayout(generalLayout, "Minutes:", minutesTextBox = new TextBox { Dock = DockStyle.Fill });
+            AddFieldToLayout(generalLayout, "Browser Refresh Minutes:", minutesTextBox = new TextBox { Dock = DockStyle.Fill });
+            AddFieldToLayout(generalLayout, "Check Interval Minutes:", checkIntervalMinutesTextBox = new TextBox { Dock = DockStyle.Fill });
 
             generalGroup.Controls.Add(generalLayout);
             layoutPanel.Controls.Add(generalGroup);
@@ -229,7 +229,7 @@ namespace WindowsTaskbarApp.Forms.Alerts
 
             testButton = new Button
             {
-                Text = "Test URL",
+                Text = "Test in Browser",
                 AutoSize = true,
                 BackColor = Color.Green,
                 ForeColor = Color.White,
@@ -296,17 +296,18 @@ namespace WindowsTaskbarApp.Forms.Alerts
                     connection: connection,
                     topic: topicTextBox.Text,
                     lastUpdatedTime: DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                    minutes: minutesTextBox.Text,
+                    browserRefreshMinutes: minutesTextBox.Text,
+                    checkIntervalMinutes: checkIntervalMinutesTextBox.Text,
                     keywords: keywordsTextBox.Text,
                     query: queryTextBox.Text,
                     url: urlTextBox.Text,
                     httpMethod: HTTPMethod,
                     httpBody: HTTPBody,
                     enabled: enabledCheckBox.Checked ? "Yes" : "No",
-                    lastTriggered: lastTriggeredPicker.Value.ToString("yyyy-MM-dd HH:mm:ss"),
+                    lastTriggered: LastTriggered, // Use the property, do not overwrite
                     responseType: responseTypeComboBox.Text,
                     httpHeader: HTTPHeader,
-                    executionType: ExecutionType, // Pass ExecutionType
+                    executionType: ExecutionType,
                     contentType: txtContentType.Text,
                     accept: txtAccept.Text,
                     userAgent: txtUserAgent.Text,
@@ -337,9 +338,29 @@ namespace WindowsTaskbarApp.Forms.Alerts
             Browser.OpenInEmbeddedBrowser(url);
         }
 
-        private void TestWithKeywordsButton_Click(object sender, EventArgs e)
+        private async void TestWithKeywordsButton_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Testing URL with keywords...", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            try
+            {
+                // Fetch content using HttpHelper
+                string content = await WindowsTaskbarApp.Services.HttpClient.HttpHelper.FetchContentAsync(
+                    url: urlTextBox.Text,
+                    httpMethod: HTTPMethod,
+                    httpHeader: HTTPHeader,
+                    httpBody: HTTPBody,
+                    contentType: ContentType,
+                    accept: Accept,
+                    userAgent: UserAgent
+                );
+
+                // Show the first 1000 characters of the response in a message box
+                string displayContent = string.IsNullOrEmpty(content) ? "No response or error." : (content.Length > 1000 ? content.Substring(0, 1000) + "..." : content);
+                MessageBox.Show(displayContent, "HTTP Response", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error fetching content: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
 

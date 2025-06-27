@@ -2,6 +2,7 @@ using System;
 using System.Configuration;
 using System.Data;
 using System.Data.SQLite;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -12,6 +13,9 @@ namespace WindowsTaskbarApp.Forms.Links
         private SQLiteConnection connection;
         private DataGridView linksDataGridView;
         private Button addButton;
+        private TextBox searchTextBox;
+        private Button searchButton;
+        private DataTable linksTable;
 
         public LinksManagementForm()
         {
@@ -28,21 +32,59 @@ namespace WindowsTaskbarApp.Forms.Links
             this.Text = "Manage Links";
             this.Size = new System.Drawing.Size(600, 400);
 
+            // Search box and button
+            var searchPanel = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                FlowDirection = FlowDirection.LeftToRight
+            };
+            searchTextBox = new TextBox
+            {
+                Width = 200,
+                PlaceholderText = "Search..."
+            };
+            searchTextBox.KeyDown += SearchTextBox_KeyDown;
+            searchButton = new Button
+            {
+                Text = "Search",
+                AutoSize = true
+            };
+            searchButton.Click += SearchButton_Click;
+            searchPanel.Controls.Add(searchTextBox);
+            searchPanel.Controls.Add(searchButton);
+
             // Initialize DataGridView
             linksDataGridView = new DataGridView
             {
                 Dock = DockStyle.Fill,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
             };
-            linksDataGridView.CellClick += LinksDataGridView_CellClick; // Attach CellClick event
-            this.Controls.Add(linksDataGridView);
+            linksDataGridView.CellClick += LinksDataGridView_CellClick;
+            linksDataGridView.ColumnHeaderMouseClick += LinksDataGridView_ColumnHeaderMouseClick;
 
             // Initialize Add Button
             addButton = new Button { Text = "Add", Dock = DockStyle.Bottom, Height = 40 };
-            this.Controls.Add(addButton);
-
-            // Event Handlers
             addButton.Click += AddButton_Click;
+
+            // Use TableLayoutPanel for layout
+            var mainLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                RowCount = 3,
+                ColumnCount = 1,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink
+            };
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Search panel
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // DataGridView
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Add button
+
+            mainLayout.Controls.Add(searchPanel, 0, 0);
+            mainLayout.Controls.Add(linksDataGridView, 0, 1);
+            mainLayout.Controls.Add(addButton, 0, 2);
+
+            this.Controls.Add(mainLayout);
         }
 
         private async Task InitializeDatabaseAsync()
@@ -60,7 +102,7 @@ namespace WindowsTaskbarApp.Forms.Links
             }
         }
 
-        private async Task LoadLinksDataAsync()
+        private async Task LoadLinksDataAsync(string filter = null)
         {
             try
             {
@@ -71,7 +113,7 @@ namespace WindowsTaskbarApp.Forms.Links
 
                 linksDataGridView.Invoke((Action)(() =>
                 {
-                    linksDataGridView.Columns.Clear(); // Clear existing columns to avoid duplicates
+                    linksDataGridView.Columns.Clear();
                 }));
 
                 var query = "SELECT Id, Title, Link, Tags, EnableAutoStartup, LastUpdated FROM Links";
@@ -90,9 +132,21 @@ namespace WindowsTaskbarApp.Forms.Links
                     }
                 }
 
+                linksTable = dataTable;
+                DataTable toDisplay = dataTable;
+                if (!string.IsNullOrEmpty(filter))
+                {
+                    var filtered = dataTable.AsEnumerable()
+                        .Where(row => row.ItemArray.Any(field => field != null && field.ToString().IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0));
+                    if (filtered.Any())
+                        toDisplay = filtered.CopyToDataTable();
+                    else
+                        toDisplay = dataTable.Clone();
+                }
+
                 linksDataGridView.Invoke((Action)(() =>
                 {
-                    linksDataGridView.DataSource = dataTable;
+                    linksDataGridView.DataSource = toDisplay;
 
                     if (linksDataGridView.Columns["Id"] != null)
                     {
@@ -206,6 +260,35 @@ namespace WindowsTaskbarApp.Forms.Links
                     }
                 }
             }
+        }
+
+        private void SearchButton_Click(object sender, EventArgs e)
+        {
+            string filter = searchTextBox.Text.Trim();
+            _ = LoadLinksDataAsync(filter);
+        }
+
+        private void SearchTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                SearchButton_Click(sender, EventArgs.Empty);
+            }
+        }
+
+        private void LinksDataGridView_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (linksTable == null) return;
+            string columnName = linksDataGridView.Columns[e.ColumnIndex].Name;
+            string sortDirection = "ASC";
+            if (linksDataGridView.Tag is Tuple<string, string> lastSort && lastSort.Item1 == columnName && lastSort.Item2 == "ASC")
+                sortDirection = "DESC";
+            var sorted = sortDirection == "DESC"
+                ? linksTable.AsEnumerable().OrderByDescending(row => row[columnName])
+                : linksTable.AsEnumerable().OrderBy(row => row[columnName]);
+            linksDataGridView.DataSource = sorted.CopyToDataTable();
+            linksDataGridView.Tag = Tuple.Create(columnName, sortDirection);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)

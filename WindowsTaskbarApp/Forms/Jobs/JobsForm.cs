@@ -2,9 +2,9 @@ using System;
 using System.Windows.Forms;
 using WindowsTaskbarApp.Jobs;
 
-namespace WindowsTaskbarApp.Forms.Events
+namespace WindowsTaskbarApp.Forms.Jobs // Renamed from Events
 {
-    public partial class EventsForm : Form
+    public partial class JobsForm : Form // Renamed from EventsForm
     {
         private Timer logsRefreshTimer;
         private readonly BackgroundJobs backgroundJobs;
@@ -14,7 +14,7 @@ namespace WindowsTaskbarApp.Forms.Events
         private Button clearLogsButton;
         private PictureBox runningIcon;
 
-        public EventsForm(BackgroundJobs backgroundJobs)
+        public JobsForm(BackgroundJobs backgroundJobs) // Renamed constructor
         {
             InitializeComponent();
             this.backgroundJobs = backgroundJobs;
@@ -26,7 +26,7 @@ namespace WindowsTaskbarApp.Forms.Events
         }
         private void InitializeComponent()
         {
-            this.Text = "Events";
+            this.Text = "Jobs"; // Renamed window title
             this.Size = new System.Drawing.Size(300, 200);
 
             logsTextBox = new TextBox
@@ -81,7 +81,6 @@ namespace WindowsTaskbarApp.Forms.Events
             this.Controls.Add(startButton);
             this.Controls.Add(stopButton);
             this.Controls.Add(clearLogsButton);
-
         }
 
         private void LogsRefreshTimer_Tick(object sender, EventArgs e)
@@ -91,18 +90,17 @@ namespace WindowsTaskbarApp.Forms.Events
 
         private void UpdateJobControls()
         {
-            // Assume you have: startButton, stopButton, runningIcon (e.g., PictureBox or ProgressBar)
             if (backgroundJobs.IsRunning)
             {
                 startButton.Enabled = false;
                 stopButton.Enabled = true;
-                runningIcon.Visible = true; // Show the running icon
+                runningIcon.Visible = true;
             }
             else
             {
                 startButton.Enabled = true;
                 stopButton.Enabled = false;
-                runningIcon.Visible = false; // Hide the running icon
+                runningIcon.Visible = false;
             }
         }
 
@@ -121,15 +119,14 @@ namespace WindowsTaskbarApp.Forms.Events
         private void ClearLogsButton_Click(object sender, EventArgs e)
         {
             backgroundJobs.ClearLogs();
-            // If you have a logsTextBox, clear its content as well
             if (logsTextBox != null)
                 logsTextBox.Text = string.Empty;
         }
 
-        private void EventsForm_Load(object sender, EventArgs e)
+        private void JobsForm_Load(object sender, EventArgs e) // Renamed event handler
         {
             UpdateJobControls();
         }
-    }          
+    }
 }
 

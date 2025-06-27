@@ -37,6 +37,9 @@ namespace WindowsTaskbarApp.Services.Database
 
                     // Create the configurations table
                     CreateConfigurationsTable(connection);
+
+                    // Create the events table
+                    CreateEventsTable(connection);
                 }
             }
             catch (Exception ex)
@@ -71,7 +74,8 @@ namespace WindowsTaskbarApp.Services.Database
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
                     Topic TEXT NOT NULL,
                     LastUpdatedTime TEXT NOT NULL,
-                    Minutes TEXT NOT NULL,
+                    BrowserRefreshMinutes TEXT NOT NULL,
+                    CheckIntervalMinutes TEXT,
                     Keywords TEXT,
                     Query TEXT,
                     URL TEXT NOT NULL,
@@ -122,6 +126,25 @@ namespace WindowsTaskbarApp.Services.Database
                 );";
 
             using (var command = new SQLiteCommand(createConfigurationsTableQuery, connection))
+            {
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void CreateEventsTable(SQLiteConnection connection)
+        {
+            var createEventsTableQuery = @"
+                CREATE TABLE IF NOT EXISTS Events (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    EventName TEXT NOT NULL,
+                    EventContent TEXT,
+                    CreateDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    AlertId INTEGER,
+                    SourceUrl TEXT,
+                    NotificationType TEXT
+                );";
+
+            using (var command = new SQLiteCommand(createEventsTableQuery, connection))
             {
                 command.ExecuteNonQuery();
             }

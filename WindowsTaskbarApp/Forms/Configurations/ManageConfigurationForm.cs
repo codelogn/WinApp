@@ -13,6 +13,7 @@ namespace WindowsTaskbarApp.Forms.Configurations
         private SQLiteConnection connection;
         private DataGridView configGridView;
         private Button addButton;
+        private TextBox searchTextBox;
 
         public ManageConfigurationForm()
         {
@@ -26,11 +27,34 @@ namespace WindowsTaskbarApp.Forms.Configurations
 
         private void InitializeComponent()
         {
+            // Search box
+            searchTextBox = new TextBox
+            {
+                Dock = DockStyle.Top,
+                PlaceholderText = "Search by Name, Key, or Value...",
+                Margin = new Padding(8),
+                Font = new Font("Arial", 10)
+            };
+            searchTextBox.KeyDown += async (sender, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    await LoadConfigurationsAsync();
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                }
+            };
+            searchTextBox.TextChanged += async (sender, e) =>
+            {
+                // Optional: Uncomment to search as you type
+                // await LoadConfigurationsAsync();
+            };
+
             this.configGridView = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
             this.addButton = new Button
             {
                 Text = "Add Configuration",
-                Dock = DockStyle.Top,
+                Dock = DockStyle.Bottom,
                 BackColor = Color.DarkBlue,
                 ForeColor = Color.White,
                 Font = new Font("Arial", 10, FontStyle.Bold)
@@ -49,8 +73,10 @@ namespace WindowsTaskbarApp.Forms.Configurations
 
             configGridView.CellContentClick += ConfigGridView_CellContentClick;
 
+            // Add controls in order: search, grid, add
             this.Controls.Add(configGridView);
             this.Controls.Add(addButton);
+            this.Controls.Add(searchTextBox);
             this.Text = "Manage Configurations";
             this.Size = new Size(600, 400);
         }
@@ -65,7 +91,16 @@ namespace WindowsTaskbarApp.Forms.Configurations
         private async Task LoadConfigurationsAsync()
         {
             var command = connection.CreateCommand();
-            command.CommandText = "SELECT * FROM Configurations";
+            string filter = searchTextBox?.Text?.Trim();
+            if (!string.IsNullOrEmpty(filter))
+            {
+                command.CommandText = "SELECT * FROM Configurations WHERE Name LIKE @filter OR Key LIKE @filter OR Value LIKE @filter";
+                command.Parameters.AddWithValue("@filter", "%" + filter + "%");
+            }
+            else
+            {
+                command.CommandText = "SELECT * FROM Configurations";
+            }
             var adapter = new SQLiteDataAdapter(command);
             var dataTable = new DataTable();
             await Task.Run(() => adapter.Fill(dataTable));

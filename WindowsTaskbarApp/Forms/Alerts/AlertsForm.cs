@@ -10,6 +10,7 @@ using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Linq;
 
 namespace WindowsTaskbarApp.Forms.Alerts
 {
@@ -18,6 +19,9 @@ namespace WindowsTaskbarApp.Forms.Alerts
         private SQLiteConnection connection;
         private DataGridView alertsGridView;
         private Button addButton;
+        private TextBox searchTextBox;
+        private Button searchButton;
+        private DataTable alertsTable;
 
         public AlertsForm()
         {
@@ -68,9 +72,16 @@ namespace WindowsTaskbarApp.Forms.Alerts
 
             alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "Minutes",
-                HeaderText = "Minutes",
-                DataPropertyName = "Minutes"
+                Name = "BrowserRefreshMinutes",
+                HeaderText = "Browser Refresh Minutes",
+                DataPropertyName = "BrowserRefreshMinutes"
+            });
+
+            alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "CheckIntervalMinutes",
+                HeaderText = "Check Interval Minutes",
+                DataPropertyName = "CheckIntervalMinutes"
             });
 
             alertsGridView.Columns.Add(new DataGridViewTextBoxColumn
@@ -197,11 +208,51 @@ namespace WindowsTaskbarApp.Forms.Alerts
 
             alertsGridView.CellContentClick += AlertsGridView_CellContentClick;
 
-            this.Controls.Add(this.alertsGridView);
-            this.Controls.Add(this.addButton);
+            // Add search box and button
+            var searchPanel = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                FlowDirection = FlowDirection.LeftToRight
+            };
+            searchTextBox = new TextBox
+            {
+                Width = 300,
+                PlaceholderText = "Search..."
+            };
+            searchTextBox.KeyDown += SearchTextBox_KeyDown;
+            searchButton = new Button
+            {
+                Text = "Search",
+                AutoSize = true
+            };
+            searchButton.Click += SearchButton_Click;
+            searchPanel.Controls.Add(searchTextBox);
+            searchPanel.Controls.Add(searchButton);
+
+            // Use TableLayoutPanel for layout
+            var mainLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                RowCount = 3,
+                ColumnCount = 1,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink
+            };
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Search panel
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // DataGridView
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Add button
+
+            mainLayout.Controls.Add(searchPanel, 0, 0);
+            mainLayout.Controls.Add(this.alertsGridView, 0, 1);
+            mainLayout.Controls.Add(this.addButton, 0, 2);
+
+            this.Controls.Add(mainLayout);
 
             this.Text = "Manage Alerts";
             this.Size = new System.Drawing.Size(800, 600);
+
+            alertsGridView.ColumnHeaderMouseClick += AlertsGridView_ColumnHeaderMouseClick;
         }
 
         private async Task InitializeDatabaseAsync()
@@ -215,19 +266,27 @@ namespace WindowsTaskbarApp.Forms.Alerts
             await connection.OpenAsync();
         }
 
-        private async Task LoadAlertsAsync()
+        private async Task LoadAlertsAsync(string filter = null)
         {
             var command = connection.CreateCommand();
             command.CommandText = "SELECT * FROM Alerts";
-
             var adapter = new SQLiteDataAdapter(command);
             var dataTable = new DataTable();
-
             await Task.Run(() => adapter.Fill(dataTable));
-
+            alertsTable = dataTable;
+            DataTable toDisplay = dataTable;
+            if (!string.IsNullOrEmpty(filter))
+            {
+                var filtered = dataTable.AsEnumerable()
+                    .Where(row => row.ItemArray.Any(field => field != null && field.ToString().IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0));
+                if (filtered.Any())
+                    toDisplay = filtered.CopyToDataTable();
+                else
+                    toDisplay = dataTable.Clone();
+            }
             alertsGridView.Invoke((Action)(() =>
             {
-                alertsGridView.DataSource = dataTable;
+                alertsGridView.DataSource = toDisplay;
             }));
         }
 
@@ -258,7 +317,8 @@ namespace WindowsTaskbarApp.Forms.Alerts
                     detailsForm.Id = int.TryParse(alertsGridView.Rows[e.RowIndex].Cells["Id"].Value?.ToString(), out var parsedId) ? parsedId : (int?)null;
                     detailsForm.Topic = alertsGridView.Rows[e.RowIndex].Cells["Topic"].Value?.ToString();
                     detailsForm.LastUpdatedTime = alertsGridView.Rows[e.RowIndex].Cells["LastUpdatedTime"].Value?.ToString();
-                    detailsForm.Minutes = alertsGridView.Rows[e.RowIndex].Cells["Minutes"].Value?.ToString();
+                    detailsForm.BrowserRefreshMinutes = alertsGridView.Rows[e.RowIndex].Cells["BrowserRefreshMinutes"].Value?.ToString();
+                    detailsForm.CheckIntervalMinutes = alertsGridView.Rows[e.RowIndex].Cells["CheckIntervalMinutes"].Value?.ToString();
                     detailsForm.Keywords = alertsGridView.Rows[e.RowIndex].Cells["Keywords"].Value?.ToString();
                     detailsForm.Query = alertsGridView.Rows[e.RowIndex].Cells["Query"].Value?.ToString();
                     detailsForm.URL = alertsGridView.Rows[e.RowIndex].Cells["URL"].Value?.ToString();
@@ -272,6 +332,7 @@ namespace WindowsTaskbarApp.Forms.Alerts
                     detailsForm.ContentType = alertsGridView.Rows[e.RowIndex].Cells["ContentType"].Value?.ToString();
                     detailsForm.Accept = alertsGridView.Rows[e.RowIndex].Cells["Accept"].Value?.ToString();
                     detailsForm.UserAgent = alertsGridView.Rows[e.RowIndex].Cells["UserAgent"].Value?.ToString();
+                    detailsForm.CheckIntervalMinutes = alertsGridView.Rows[e.RowIndex].Cells["CheckIntervalMinutes"].Value?.ToString();
 
                     // Subscribe to the AlertSaved event
                     detailsForm.AlertSaved += async (s, args) =>
@@ -345,17 +406,44 @@ namespace WindowsTaskbarApp.Forms.Alerts
             else if (columnName == "OpenWeb")
             {
                 var url = alertsGridView.Rows[e.RowIndex].Cells["URL"].Value?.ToString();
-                var minutesValue = alertsGridView.Rows[e.RowIndex].Cells["Minutes"].Value?.ToString();
-
+                var minutesValue = alertsGridView.Rows[e.RowIndex].Cells["BrowserRefreshMinutes"].Value?.ToString();
                 if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(minutesValue) || !int.TryParse(minutesValue, out var minutes))
                 {
-                    MessageBox.Show("Invalid URL or Minutes value.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("Invalid URL or Browser Refresh Minutes value.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
-
                 var browserForm = new FullScreenBrowserForm(url, minutes);
                 browserForm.Show();
             }
+        }
+
+        private void SearchButton_Click(object sender, EventArgs e)
+        {
+            string filter = searchTextBox.Text.Trim();
+            _ = LoadAlertsAsync(filter);
+        }
+
+        private void SearchTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                SearchButton_Click(sender, EventArgs.Empty);
+            }
+        }
+
+        private void AlertsGridView_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (alertsTable == null) return;
+            string columnName = alertsGridView.Columns[e.ColumnIndex].Name;
+            string sortDirection = "ASC";
+            if (alertsGridView.Tag is Tuple<string, string> lastSort && lastSort.Item1 == columnName && lastSort.Item2 == "ASC")
+                sortDirection = "DESC";
+            var sorted = sortDirection == "DESC"
+                ? alertsTable.AsEnumerable().OrderByDescending(row => row[columnName])
+                : alertsTable.AsEnumerable().OrderBy(row => row[columnName]);
+            alertsGridView.DataSource = sorted.CopyToDataTable();
+            alertsGridView.Tag = Tuple.Create(columnName, sortDirection);
         }
     }
 }
