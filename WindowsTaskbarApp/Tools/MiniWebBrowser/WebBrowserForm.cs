@@ -14,6 +14,7 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
         private Panel browserContentPanel;
         private TabControl tabControl;
         private ToolStrip browserToolStrip;
+        private TextBox addressTextBox;
 
         private bool isFileWriteActive = false;
         private string lastDomContent = "";
@@ -87,6 +88,15 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
             };
             tabControl.SelectedIndexChanged += (s, e) => {
                 ShowActiveTabBrowser();
+                // Sync address bar with active tab's URL
+                if (tabControl.SelectedTab != null)
+                {
+                    var webView = tabControl.SelectedTab.Tag as WebView2;
+                    if (webView != null && webView.CoreWebView2 != null)
+                    {
+                        addressTextBox.Text = webView.Source?.ToString() ?? "";
+                    }
+                }
             };
             tabControl.MouseDoubleClick += (s, e) =>
             {
@@ -165,7 +175,7 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
             addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));
             addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80F));
 
-            var addressTextBox = new TextBox { Dock = DockStyle.Fill, PlaceholderText = "Enter URL here..." };
+            addressTextBox = new TextBox { Dock = DockStyle.Fill, PlaceholderText = "Enter URL here..." };
             var goButton = new Button { Text = "Go", Dock = DockStyle.Fill, Width = 60 };
 
             // Go button click navigates active tab's WebView2
@@ -191,7 +201,21 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
             addressTextBox.KeyDown += (sender, e) => {
                 if (e.KeyCode == Keys.Enter)
                 {
-                    goButton.PerformClick();
+                    if (tabControl.SelectedTab != null)
+                    {
+                        var webView = tabControl.SelectedTab.Tag as WebView2;
+                        if (webView != null && webView.CoreWebView2 != null)
+                        {
+                            var url = addressTextBox.Text.Trim();
+                            if (!string.IsNullOrWhiteSpace(url))
+                            {
+                                if (!url.StartsWith("http://") && !url.StartsWith("https://"))
+                                    url = "https://" + url;
+                                lastWrittenDomContent = ""; // Reset so new content is written
+                                webView.CoreWebView2.Navigate(url);
+                            }
+                        }
+                    }
                     e.Handled = true;
                     e.SuppressKeyPress = true;
                 }
@@ -254,7 +278,17 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
 
         private void AddNewTab(string initialUrl)
         {
-            var tabPage = new TabPage("New Tab");
+            var tabPage = new TabPage();
+            // Add close button to tab header
+            tabPage.Text = "New Tab  ✕";
+            tabPage.MouseDown += (sender, e) => {
+                // Detect click on close button area (rightmost 24px)
+                if (e.Button == MouseButtons.Left && e.X > tabPage.Width - 24)
+                {
+                    if (tabControl.TabPages.Count > 1)
+                        tabControl.TabPages.Remove(tabPage);
+                }
+            };
             var layout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -295,6 +329,13 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
             };
 
             tabPage.Tag = webView; // Store reference to WebView2 in tab's Tag
+            // Sync address bar with navigation in this tab
+            webView.NavigationStarting += (s, e) => {
+                addressTextBox.Invoke((MethodInvoker)(() => addressTextBox.Text = e.Uri));
+            };
+            webView.NavigationCompleted += (s, e) => {
+                addressTextBox.Invoke((MethodInvoker)(() => addressTextBox.Text = webView.Source?.ToString() ?? ""));
+            };
 
             urlTextBox.Text = initialUrl;
             urlTextBox.KeyDown += (sender, e) =>
