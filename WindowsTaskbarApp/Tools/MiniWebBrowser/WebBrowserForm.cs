@@ -1,4 +1,5 @@
 using System;
+using System;
 using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.WinForms;
@@ -10,9 +11,8 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
 {
     public partial class WebBrowserForm : Form
     {
-        private WebView2 webView;
-        private TextBox urlTextBox;
-        private Button loadButton;
+        private Panel browserContentPanel;
+        private TabControl tabControl;
         private ToolStrip browserToolStrip;
 
         private bool isFileWriteActive = false;
@@ -21,6 +21,19 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
         private string currentUrlFilePath = null;
         private System.Timers.Timer domCheckTimer;
         private ToolStripButton recButton;
+
+        private void LoadTabUrl(WebView2 webView, TextBox urlTextBox)
+        {
+            var url = urlTextBox.Text.Trim();
+            if (!string.IsNullOrWhiteSpace(url))
+            {
+                if (!url.StartsWith("http://") && !url.StartsWith("https://"))
+                {
+                    url = "https://" + url;
+                }
+                webView.CoreWebView2?.Navigate(url);
+            }
+        }
         private System.Windows.Forms.Timer recBlinkTimer;
         private bool recBlinkState = false;
 
@@ -28,301 +41,315 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
         {
             InitializeComponent();
             this.Load += WebBrowserForm_Load;
-            // Start recording by default
-            recButton?.PerformClick();
         }
 
         private async void WebBrowserForm_Load(object sender, EventArgs e)
         {
-            try
-            {
-                await webView.EnsureCoreWebView2Async();
-                urlTextBox.Text = "https://www.google.com";
-                if (webView.CoreWebView2 != null)
-                {
-                    webView.CoreWebView2.Navigate(urlTextBox.Text);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"WebView2 initialization failed: {ex.Message}");
-            }
+            // Add first tab on load
+            AddNewTab("https://www.google.com");
         }
 
         private void InitializeComponent()
         {
             this.Text = "Web Browser";
-            this.Size = new System.Drawing.Size(800, 600);
+            this.Size = new System.Drawing.Size(1000, 700);
 
-            webView = new WebView2
+            // Main vertical layout
+            var mainLayout = new TableLayoutPanel();
+            mainLayout.Dock = DockStyle.Fill;
+            mainLayout.RowCount = 3;
+            mainLayout.ColumnCount = 1;
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F)); // Top bar
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F)); // Address bar
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Browser content
+
+
+            // Top bar: tabs and plus button (side by side), REC button separate
+            var topBar = new TableLayoutPanel();
+            topBar.Dock = DockStyle.Fill;
+            topBar.Height = 36;
+            topBar.ColumnCount = 2;
+            topBar.RowCount = 1;
+            topBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F)); // Tabs + plus
+            topBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F)); // REC
+
+            var tabsPanel = new FlowLayoutPanel();
+            tabsPanel.Dock = DockStyle.Fill;
+            tabsPanel.Height = 32;
+            tabsPanel.FlowDirection = FlowDirection.LeftToRight;
+            tabsPanel.WrapContents = false;
+
+            tabControl = new TabControl
             {
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Left,
+                Height = 32,
+                Width = 800
+            };
+            tabControl.SelectedIndexChanged += (s, e) => {
+                ShowActiveTabBrowser();
+            };
+            tabControl.MouseDoubleClick += (s, e) =>
+            {
+                if (e.Button == MouseButtons.Right)
+                {
+                    if (tabControl.TabCount > 1)
+                        tabControl.TabPages.Remove(tabControl.SelectedTab);
+                }
             };
 
-            urlTextBox = new TextBox
-            {
-                Dock = DockStyle.Fill,
-                PlaceholderText = "Enter URL here..."
+            var plusTabButton = new Button();
+            plusTabButton.Text = "+";
+            plusTabButton.Font = new System.Drawing.Font("Arial", 14, System.Drawing.FontStyle.Bold);
+            plusTabButton.Size = new System.Drawing.Size(32, 32);
+            plusTabButton.Cursor = Cursors.Hand;
+            plusTabButton.FlatStyle = FlatStyle.Flat;
+            plusTabButton.TabStop = false;
+            plusTabButton.Margin = new Padding(0, 0, 0, 0);
+            plusTabButton.Click += (sender, e) => AddNewTab("https://www.google.com");
+
+            tabsPanel.Controls.Add(tabControl);
+            tabsPanel.Controls.Add(plusTabButton);
+
+            // REC button logic
+            recButton = new ToolStripButton("● REC");
+            recButton.ForeColor = System.Drawing.Color.Gray;
+            recButton.Font = new System.Drawing.Font("Arial", 12, System.Drawing.FontStyle.Bold);
+            recButton.AutoSize = false;
+            recButton.Width = 80;
+            recButton.Height = 32;
+            recButton.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            recButton.Click += (sender, e) => {
+                recBlinkState = !recBlinkState;
+                if (recBlinkState)
+                {
+                    recButton.ForeColor = System.Drawing.Color.Red;
+                    recBlinkTimer = new System.Windows.Forms.Timer();
+                    recBlinkTimer.Interval = 500;
+                    bool dotVisible = true;
+                    recBlinkTimer.Tick += (s2, e2) => {
+                        dotVisible = !dotVisible;
+                        recButton.Text = (dotVisible ? "● " : "  ") + "REC";
+                    };
+                    recBlinkTimer.Start();
+                }
+                else
+                {
+                    if (recBlinkTimer != null)
+                    {
+                        recBlinkTimer.Stop();
+                        recBlinkTimer.Dispose();
+                        recBlinkTimer = null;
+                    }
+                    recButton.ForeColor = System.Drawing.Color.Gray;
+                    recButton.Text = "● REC";
+                }
+                // TODO: Add actual recording logic here
             };
-            urlTextBox.KeyDown += (sender, e) =>
+
+            var recPanel = new Panel { Dock = DockStyle.Fill, Height = 32 };
+            var recToolStrip = new ToolStrip { Dock = DockStyle.Fill, GripStyle = ToolStripGripStyle.Hidden, BackColor = System.Drawing.Color.Transparent };
+            recToolStrip.Items.Add(recButton);
+            recPanel.Controls.Add(recToolStrip);
+
+            topBar.Controls.Add(tabsPanel, 0, 0);
+            topBar.Controls.Add(recPanel, 1, 0);
+
+            // Address bar
+            var addressBarPanel = new TableLayoutPanel();
+            addressBarPanel.Dock = DockStyle.Fill;
+            addressBarPanel.ColumnCount = 2;
+            addressBarPanel.RowCount = 1;
+            addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));
+
+            var addressTextBox = new TextBox { Dock = DockStyle.Fill, PlaceholderText = "Enter URL here..." };
+            var goButton = new Button { Text = "Go", Dock = DockStyle.Fill, Width = 60 };
+            goButton.Click += (sender, e) =>
+            {
+                if (tabControl.SelectedTab != null)
+                {
+                    var tabPage = tabControl.SelectedTab;
+                    var webView = tabPage.Tag as WebView2;
+                    if (webView != null)
+                    {
+                        string urlToNavigate = addressTextBox.Text.Trim();
+                        if (string.IsNullOrWhiteSpace(urlToNavigate)) return;
+                        if (!urlToNavigate.StartsWith("http://") && !urlToNavigate.StartsWith("https://"))
+                            urlToNavigate = "https://" + urlToNavigate;
+                        if (Uri.TryCreate(urlToNavigate, UriKind.Absolute, out var uriResult))
+                        {
+                            if (webView.CoreWebView2 != null)
+                            {
+                                webView.CoreWebView2.Navigate(uriResult.ToString());
+                            }
+                            else
+                            {
+                                webView.CoreWebView2InitializationCompleted += (s2, e2) =>
+                                {
+                                    webView.CoreWebView2.Navigate(uriResult.ToString());
+                                };
+                                webView.EnsureCoreWebView2Async();
+                            }
+                        }
+                        // else: invalid URI, do nothing or show error (optional)
+                    }
+                }
+            };
+            addressTextBox.KeyDown += (sender, e) =>
             {
                 if (e.KeyCode == Keys.Enter)
                 {
-                    LoadButton_Click(sender, EventArgs.Empty);
+                    goButton.PerformClick();
                     e.Handled = true;
                     e.SuppressKeyPress = true;
                 }
             };
+            addressBarPanel.Controls.Add(addressTextBox, 0, 0);
+            addressBarPanel.Controls.Add(goButton, 1, 0);
 
-            loadButton = new Button
+            // Browser content panel
+            browserContentPanel = new Panel { Dock = DockStyle.Fill };
+
+            // Add to main layout
+            mainLayout.Controls.Add(topBar, 0, 0);
+            mainLayout.Controls.Add(addressBarPanel, 0, 1);
+            mainLayout.Controls.Add(browserContentPanel, 0, 2);
+
+            this.Controls.Clear();
+            this.Controls.Add(mainLayout);
+        }
+
+        private void AddNewTab(string initialUrl)
+        {
+            var tabPage = new TabPage("New Tab");
+            var layout = new TableLayoutPanel
             {
-                Text = "Load",
-                Width = 60,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(2, 0, 2, 0)
+                ColumnCount = 1,
+                RowCount = 2,
+                Padding = new Padding(0),
+                AutoSize = true
             };
-            loadButton.Click += LoadButton_Click;
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             var urlPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 28,
                 ColumnCount = 2,
                 RowCount = 1,
-                Padding = new Padding(2),
-                AutoSize = true
+                Padding = new Padding(0),
+                AutoSize = true,
+                Height = 32
             };
             urlPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             urlPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));
+
+            var urlTextBox = new TextBox
+            {
+                Dock = DockStyle.Fill,
+                PlaceholderText = "Enter URL here..."
+            };
+            var loadButton = new Button
+            {
+                Text = "Load",
+                Dock = DockStyle.Fill,
+                Width = 60
+            };
+            var webView = new WebView2
+            {
+                Dock = DockStyle.Fill
+            };
+
+            tabPage.Tag = webView; // Store reference to WebView2 in tab's Tag
+
+            urlTextBox.Text = initialUrl;
+            urlTextBox.KeyDown += (sender, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    LoadTabUrl(webView, urlTextBox);
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                }
+            };
+            loadButton.Click += (sender, e) => LoadTabUrl(webView, urlTextBox);
+
             urlPanel.Controls.Add(urlTextBox, 0, 0);
             urlPanel.Controls.Add(loadButton, 1, 0);
 
-            browserToolStrip = new ToolStrip
-            {
-                Dock = DockStyle.Top,
-                GripStyle = ToolStripGripStyle.Hidden
-            };
+            layout.Controls.Add(urlPanel, 0, 0);
+            // Do NOT add webView to tab layout
 
-            var backButton = new ToolStripButton("Back")
+            tabPage.Controls.Add(layout);
+            tabControl.TabPages.Add(tabPage);
+            tabControl.SelectedTab = tabPage;
+
+            // Always show the new tab's WebView2 in browserContentPanel
+            browserContentPanel.Controls.Clear();
+            browserContentPanel.Controls.Add(webView);
+
+            webView.CoreWebView2InitializationCompleted += async (s, e) =>
             {
-                Enabled = false
-            };
-            backButton.Click += (sender, e) =>
-            {
-                if (webView.CanGoBack)
+                if (e.IsSuccess)
                 {
-                    webView.GoBack();
-                }
-            };
-            browserToolStrip.Items.Add(backButton);
-
-            var forwardButton = new ToolStripButton("Forward")
-            {
-                Enabled = false
-            };
-            forwardButton.Click += (sender, e) =>
-            {
-                if (webView.CanGoForward)
-                {
-                    webView.GoForward();
-                }
-            };
-            browserToolStrip.Items.Add(forwardButton);
-
-            var refreshButton = new ToolStripButton("Refresh");
-            refreshButton.Click += (sender, e) => webView.Reload();
-            browserToolStrip.Items.Add(refreshButton);
-
-            var stopButton = new ToolStripButton("Stop");
-            stopButton.Click += (sender, e) => webView.CoreWebView2?.Stop();
-            browserToolStrip.Items.Add(stopButton);
-
-            var homeButton = new ToolStripButton("Home");
-            homeButton.Click += (sender, e) =>
-            {
-                LoadButton_Click(sender, e);
-            };
-            browserToolStrip.Items.Add(homeButton);
-
-            // Add REC button
-            recButton = new ToolStripButton("● REC");
-            recButton.ForeColor = System.Drawing.Color.Red;
-            recButton.Font = new System.Drawing.Font("Arial", 10, System.Drawing.FontStyle.Bold);
-            recButton.ToolTipText = "Toggle recording";
-            recButton.Click += (sender, e) =>
-            {
-                if (isFileWriteActive)
-                {
-                    // Stop recording
-                    isFileWriteActive = false;
-                    domCheckTimer?.Stop();
-                    domCheckTimer?.Dispose();
-                    domCheckTimer = null;
-                    recButton.ForeColor = System.Drawing.Color.Gray;
-                    recBlinkTimer?.Stop();
-                    recButton.Text = "● REC";
-                }
-                else
-                {
-                    // Start recording
-                    string dateStr = DateTime.Now.ToString("MM-dd-yyyy");
-                    string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "WinAppWebContent", dateStr);
-                    Directory.CreateDirectory(folder);
-                    isFileWriteActive = true;
-                    lastDomContent = "";
-                    lastWrittenDomContent = "";
-                    currentUrlFilePath = null;
-                    domCheckTimer = new System.Timers.Timer(1000); // 1 second
-                    domCheckTimer.Elapsed += async (s2, args2) =>
+                    webView.CoreWebView2.Navigate(initialUrl);
+                    // Update tab title after navigation
+                    webView.CoreWebView2.NavigationCompleted += async (s2, e2) =>
                     {
-                        if (isFileWriteActive && webView.CoreWebView2 != null)
+                        try
                         {
-                            try
+                            string jsTitle = "document.title";
+                            var titleResult = await webView.CoreWebView2.ExecuteScriptAsync(jsTitle);
+                            if (!string.IsNullOrWhiteSpace(titleResult))
                             {
-                                string js = @"
-    (() => {
-        function isVisible(el) {
-            return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length) && getComputedStyle(el).visibility !== 'hidden' && getComputedStyle(el).display !== 'none';
-        }
-        function getTextContent() {
-            let result = '';
-            let title = document.title || '';
-            if (title) result += 'TITLE: ' + title + '\n';
-            let desc = '';
-            let metaDesc = document.querySelector('meta[name=description]');
-            if (metaDesc && metaDesc.content) desc = metaDesc.content.trim();
-            if (desc) result += 'DESCRIPTION: ' + desc + '\n';
-            let main = document.querySelector('[role=main], main, article, section');
-            if (main && isVisible(main)) {
-                result += 'MAIN: ' + main.innerText.trim() + '\n';
-            }
-            document.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h => {
-                if (isVisible(h)) result += h.tagName + ': ' + h.innerText.trim() + '\n';
-            });
-            document.querySelectorAll('p').forEach(p => {
-                if (isVisible(p)) result += 'P: ' + p.innerText.trim() + '\n';
-            });
-            document.querySelectorAll('div,span').forEach(el => {
-                if (isVisible(el)) {
-                    let role = el.getAttribute('role') || '';
-                    let id = el.id || '';
-                    let cls = el.className || '';
-                    if (!/nav|footer|sidebar|menu|ads|ad|code|script|style/i.test(role+id+cls)) {
-                        let txt = el.innerText.trim();
-                        if (txt.length > 40) result += 'GENERALTEXT: ' + txt + '\n';
-                    }
-                }
-            });
-            document.querySelectorAll('a[href]').forEach(a => {
-                if (isVisible(a)) result += 'LINK: ' + a.innerText.trim() + ' -> ' + a.href + '\n';
-            });
-            return result;
-        }
-        return getTextContent();
-    })();
-";
-                                var currentDomContent = await webView.CoreWebView2.ExecuteScriptAsync(js);
-                                currentDomContent = System.Text.Json.JsonSerializer.Deserialize<string>(currentDomContent);
-                                var url = webView.Source?.AbsoluteUri ?? urlTextBox.Text.Trim();
-                                var safeFileName = GetSafeFileName(url);
-                                var dateFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "WinAppWebContent", DateTime.Now.ToString("MM-dd-yyyy"));
-                                var filePath = Path.Combine(dateFolder, safeFileName + ".yaml");
-                                currentUrlFilePath = filePath;
-                                if (currentDomContent != lastWrittenDomContent)
-                                {
-                                var yamlSerializer = new SerializerBuilder()
-                                    .WithNamingConvention(CamelCaseNamingConvention.Instance)
-                                    .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitDefaults)
-                                    .Build();
-                                var yamlObj = new WebContentYaml
-                                {
-                                    Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                                    Url = url,
-                                    Content = currentDomContent
-                                };
-                                var yaml = yamlSerializer.Serialize(yamlObj);
-                                File.WriteAllText(filePath, yaml);
-                                lastWrittenDomContent = currentDomContent;
-                                }
+                                // Remove quotes from result
+                                var pageTitle = System.Text.Json.JsonSerializer.Deserialize<string>(titleResult);
+                                if (!string.IsNullOrWhiteSpace(pageTitle))
+                                    tabPage.Text = pageTitle.Length > 40 ? pageTitle.Substring(0, 40) + "..." : pageTitle;
+                                else
+                                    tabPage.Text = "(Untitled)";
                             }
-                            catch { }
+                            else
+                            {
+                                tabPage.Text = "(Untitled)";
+                            }
+                        }
+                        catch
+                        {
+                            tabPage.Text = "(Untitled)";
                         }
                     };
-                    domCheckTimer.Start();
-                    recButton.ForeColor = System.Drawing.Color.Red;
-                    recButton.Text = "● REC";
-                    // Blinking effect
-                    recBlinkTimer = new System.Windows.Forms.Timer();
-                    recBlinkTimer.Interval = 500;
-                    recBlinkTimer.Tick += (s3, e3) =>
-                    {
-                        recBlinkState = !recBlinkState;
-                        recButton.ForeColor = recBlinkState ? System.Drawing.Color.Red : System.Drawing.Color.DarkRed;
-                    };
-                    recBlinkTimer.Start();
                 }
             };
-            browserToolStrip.Items.Add(recButton);
+            webView.EnsureCoreWebView2Async();
 
-            var mainPanel = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                AutoSize = true
-            };
-            mainPanel.ColumnCount = 1;
-            mainPanel.RowCount = 2;
-            mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            mainPanel.Controls.Add(urlPanel, 0, 0);
-            mainPanel.Controls.Add(webView, 0, 1);
-
-            this.Controls.Add(mainPanel);
-            this.Controls.Add(browserToolStrip);
+            ShowActiveTabBrowser();
         }
 
-        private void LoadButton_Click(object sender, EventArgs e)
+        private void ShowActiveTabBrowser()
         {
-            var url = urlTextBox.Text.Trim();
-            if (string.IsNullOrEmpty(url))
+            if (tabControl.SelectedTab != null && tabControl.SelectedTab.Controls.Count > 0)
             {
-                MessageBox.Show("Please enter a valid URL.", "Invalid URL", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-            // Ensure the URL is well-formed and absolute
-            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-            {
-                // Try to prepend https:// if missing
-                url = "https://" + url;
-                if (!Uri.TryCreate(url, UriKind.Absolute, out uri))
+                var layout = tabControl.SelectedTab.Controls[0] as TableLayoutPanel;
+                if (layout != null)
                 {
-                    MessageBox.Show("Please enter a valid absolute URL (e.g. https://example.com)", "Invalid URL", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
+                    WebView2 webView = null;
+                    foreach (Control c in layout.Controls)
+                    {
+                        if (c is WebView2)
+                        {
+                            webView = (WebView2)c;
+                            break;
+                        }
+                    }
+                    if (webView != null)
+                    {
+                        browserContentPanel.Controls.Clear();
+                        browserContentPanel.Controls.Add(webView);
+                    }
                 }
             }
-            try
-            {
-                webView.CoreWebView2.Navigate(uri.AbsoluteUri);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to load URL: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private string GetSafeFileName(string url)
-        {
-            var invalidChars = Path.GetInvalidFileNameChars();
-            var safe = new string(url.ToCharArray().Where(c => !invalidChars.Contains(c)).ToArray());
-            if (safe.Length > 100) safe = safe.Substring(0, 100);
-            return safe;
-        }
-        // Helper class for YAML serialization with proper indentation
-        public class WebContentYaml
-        {
-            public string Timestamp { get; set; }
-            public string Url { get; set; }
-            public string Content { get; set; }
         }
     }
 }
