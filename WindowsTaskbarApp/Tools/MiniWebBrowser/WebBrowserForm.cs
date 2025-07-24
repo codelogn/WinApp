@@ -120,6 +120,7 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
             recButton.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             recButton.Click += (sender, e) => {
                 recBlinkState = !recBlinkState;
+                isFileWriteActive = recBlinkState;
                 if (recBlinkState)
                 {
                     recButton.ForeColor = System.Drawing.Color.Red;
@@ -131,6 +132,7 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
                         recButton.Text = (dotVisible ? "● " : "  ") + "REC";
                     };
                     recBlinkTimer.Start();
+                    StartContentCapture();
                 }
                 else
                 {
@@ -142,8 +144,8 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
                     }
                     recButton.ForeColor = System.Drawing.Color.Gray;
                     recButton.Text = "● REC";
+                    StopContentCapture();
                 }
-                // TODO: Add actual recording logic here
             };
 
             var recPanel = new Panel { Dock = DockStyle.Fill, Height = 32 };
@@ -157,46 +159,36 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
             // Address bar
             var addressBarPanel = new TableLayoutPanel();
             addressBarPanel.Dock = DockStyle.Fill;
-            addressBarPanel.ColumnCount = 2;
+            addressBarPanel.ColumnCount = 3;
             addressBarPanel.RowCount = 1;
             addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));
+            addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80F));
 
             var addressTextBox = new TextBox { Dock = DockStyle.Fill, PlaceholderText = "Enter URL here..." };
             var goButton = new Button { Text = "Go", Dock = DockStyle.Fill, Width = 60 };
-            goButton.Click += (sender, e) =>
-            {
+
+            // Go button click navigates active tab's WebView2
+            goButton.Click += (sender, e) => {
                 if (tabControl.SelectedTab != null)
                 {
-                    var tabPage = tabControl.SelectedTab;
-                    var webView = tabPage.Tag as WebView2;
-                    if (webView != null)
+                    var webView = tabControl.SelectedTab.Tag as WebView2;
+                    if (webView != null && webView.CoreWebView2 != null)
                     {
-                        string urlToNavigate = addressTextBox.Text.Trim();
-                        if (string.IsNullOrWhiteSpace(urlToNavigate)) return;
-                        if (!urlToNavigate.StartsWith("http://") && !urlToNavigate.StartsWith("https://"))
-                            urlToNavigate = "https://" + urlToNavigate;
-                        if (Uri.TryCreate(urlToNavigate, UriKind.Absolute, out var uriResult))
+                        var url = addressTextBox.Text.Trim();
+                        if (!string.IsNullOrWhiteSpace(url))
                         {
-                            if (webView.CoreWebView2 != null)
-                            {
-                                webView.CoreWebView2.Navigate(uriResult.ToString());
-                            }
-                            else
-                            {
-                                webView.CoreWebView2InitializationCompleted += (s2, e2) =>
-                                {
-                                    webView.CoreWebView2.Navigate(uriResult.ToString());
-                                };
-                                webView.EnsureCoreWebView2Async();
-                            }
+                            if (!url.StartsWith("http://") && !url.StartsWith("https://"))
+                                url = "https://" + url;
+                            lastWrittenDomContent = ""; // Reset so new content is written
+                            webView.CoreWebView2.Navigate(url);
                         }
-                        // else: invalid URI, do nothing or show error (optional)
                     }
                 }
             };
-            addressTextBox.KeyDown += (sender, e) =>
-            {
+
+            // Enter key in address bar navigates active tab's WebView2
+            addressTextBox.KeyDown += (sender, e) => {
                 if (e.KeyCode == Keys.Enter)
                 {
                     goButton.PerformClick();
@@ -204,8 +196,49 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
                     e.SuppressKeyPress = true;
                 }
             };
+            // REC button for address bar (use Button, not ToolStripButton)
+            var recBtn = new Button {
+                Text = "● REC",
+                Dock = DockStyle.Fill,
+                Width = 80,
+                Height = 32,
+                ForeColor = System.Drawing.Color.Gray,
+                Font = new System.Drawing.Font("Arial", 12, System.Drawing.FontStyle.Bold),
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+            };
+            recBtn.Click += (sender, e) => {
+                recBlinkState = !recBlinkState;
+                isFileWriteActive = recBlinkState;
+                if (recBlinkState)
+                {
+                    recBtn.Text = "● REC";
+                    recBtn.ForeColor = System.Drawing.Color.Red;
+                    recBlinkTimer = new System.Windows.Forms.Timer();
+                    recBlinkTimer.Interval = 500;
+                    bool isRed = true;
+                    recBlinkTimer.Tick += (s2, e2) => {
+                        isRed = !isRed;
+                        recBtn.ForeColor = isRed ? System.Drawing.Color.Red : System.Drawing.Color.Gray;
+                    };
+                    recBlinkTimer.Start();
+                    StartContentCapture();
+                }
+                else
+                {
+                    if (recBlinkTimer != null)
+                    {
+                        recBlinkTimer.Stop();
+                        recBlinkTimer.Dispose();
+                        recBlinkTimer = null;
+                    }
+                    recBtn.ForeColor = System.Drawing.Color.Gray;
+                    recBtn.Text = "● REC";
+                    StopContentCapture();
+                }
+            };
             addressBarPanel.Controls.Add(addressTextBox, 0, 0);
             addressBarPanel.Controls.Add(goButton, 1, 0);
+            addressBarPanel.Controls.Add(recBtn, 2, 0);
 
             // Browser content panel
             browserContentPanel = new Panel { Dock = DockStyle.Fill };
@@ -268,12 +301,16 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
             {
                 if (e.KeyCode == Keys.Enter)
                 {
+                    lastWrittenDomContent = ""; // Reset so new content is written
                     LoadTabUrl(webView, urlTextBox);
                     e.Handled = true;
                     e.SuppressKeyPress = true;
                 }
             };
-            loadButton.Click += (sender, e) => LoadTabUrl(webView, urlTextBox);
+            loadButton.Click += (sender, e) => {
+                lastWrittenDomContent = ""; // Reset so new content is written
+                LoadTabUrl(webView, urlTextBox);
+            };
 
             urlPanel.Controls.Add(urlTextBox, 0, 0);
             urlPanel.Controls.Add(loadButton, 1, 0);
@@ -350,6 +387,62 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
                     }
                 }
             }
+        }
+
+        // Content capture logic
+        private void StartContentCapture()
+        {
+            domCheckTimer = new System.Timers.Timer(5000); // every 5 seconds
+            domCheckTimer.Elapsed += (s, e) => CaptureAndWriteContent();
+            domCheckTimer.Start();
+        }
+        private void StopContentCapture()
+        {
+            if (domCheckTimer != null)
+            {
+                domCheckTimer.Stop();
+                domCheckTimer.Dispose();
+                domCheckTimer = null;
+            }
+        }
+        private async void CaptureAndWriteContent()
+        {
+            if (!isFileWriteActive) return;
+            if (tabControl.SelectedTab == null) return;
+            var webView = tabControl.SelectedTab.Tag as WebView2;
+            if (webView == null || webView.CoreWebView2 == null) return;
+            try
+            {
+                string url = webView.Source?.ToString() ?? "";
+                string js = "document.body.innerText";
+                var result = await webView.ExecuteScriptAsync(js);
+                string content = System.Text.Json.JsonSerializer.Deserialize<string>(result);
+                if (string.IsNullOrWhiteSpace(content)) return;
+                if (content == lastWrittenDomContent) return;
+                lastWrittenDomContent = content;
+                string safeUrl = GetSafeFileName(url);
+                string dateFolder = DateTime.Now.ToString("yyyy-MM-dd");
+                string folderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "WebCaptures", dateFolder);
+                Directory.CreateDirectory(folderPath);
+                string filePath = Path.Combine(folderPath, safeUrl + ".txt");
+                File.WriteAllText(filePath, content);
+                // Debug log
+                System.Diagnostics.Debug.WriteLine($"[REC] Wrote file: {filePath}");
+            }
+            catch (Exception ex) {
+                System.Diagnostics.Debug.WriteLine($"[REC] Error: {ex.Message}");
+            }
+        }
+        private string GetSafeFileName(string url)
+        {
+            // Sanitize full URL for file name
+            foreach (var c in Path.GetInvalidFileNameChars())
+                url = url.Replace(c, '_');
+            // Remove protocol for brevity
+            url = url.Replace("https://", "").Replace("http://", "");
+            // Replace '/' and '?' with '_'
+            url = url.Replace('/', '_').Replace('?', '_').Replace('&', '_').Replace('=', '_');
+            return url.Length > 120 ? url.Substring(0, 120) : url;
         }
     }
 }
