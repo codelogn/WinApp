@@ -13,7 +13,7 @@ namespace WindowsTaskbarApp.Forms.Configurations
         public int? Id { get; set; }
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public string Name { get => nameTextBox.Text; set => nameTextBox.Text = value; }
+        public new string Name { get => nameTextBox.Text; set => nameTextBox.Text = value; }
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Key { get => keyTextBox.Text; set => keyTextBox.Text = value; }
