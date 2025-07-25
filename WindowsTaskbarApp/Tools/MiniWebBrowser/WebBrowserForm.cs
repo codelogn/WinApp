@@ -1,11 +1,11 @@
 using System;
-using System;
 using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.WinForms;
 using System.IO;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
+using System.Drawing;
 
 namespace WindowsTaskbarApp.Tools.MiniWebBrowser
 {
@@ -42,6 +42,30 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
         {
             InitializeComponent();
             this.Load += WebBrowserForm_Load;
+
+            // Custom tab coloring
+            tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
+            tabControl.DrawItem += TabControl_DrawItem;
+        }
+        // Custom tab coloring logic
+        private void TabControl_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            var tabControl = sender as TabControl;
+            for (int i = 0; i < tabControl.TabCount; i++)
+            {
+                var tabRect = tabControl.GetTabRect(i);
+                bool isSelected = (i == tabControl.SelectedIndex);
+                Color backColor = isSelected ? Color.FromArgb(245, 245, 245) : Color.FromArgb(220, 220, 220);
+                using (SolidBrush brush = new SolidBrush(backColor))
+                {
+                    e.Graphics.FillRectangle(brush, tabRect);
+                }
+                // Draw tab text
+                string tabText = tabControl.TabPages[i].Text;
+                TextFormatFlags flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter;
+                Color textColor = Color.Black;
+                TextRenderer.DrawText(e.Graphics, tabText, tabControl.Font, tabRect, textColor, flags);
+            }
         }
 
         private async void WebBrowserForm_Load(object sender, EventArgs e)
