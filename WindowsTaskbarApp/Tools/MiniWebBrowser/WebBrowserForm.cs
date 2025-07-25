@@ -47,7 +47,8 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
             tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
             tabControl.DrawItem += TabControl_DrawItem;
         }
-        // Custom tab coloring logic
+        // Custom tab coloring logic with close button
+        private const int CLOSE_BUTTON_SIZE = 16;
         private void TabControl_DrawItem(object sender, DrawItemEventArgs e)
         {
             var tabControl = sender as TabControl;
@@ -60,11 +61,44 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
                 {
                     e.Graphics.FillRectangle(brush, tabRect);
                 }
-                // Draw tab text
+                // Draw tab text (leave space for close button)
                 string tabText = tabControl.TabPages[i].Text;
-                TextFormatFlags flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter;
+                Rectangle textRect = new Rectangle(tabRect.X + 4, tabRect.Y + 2, tabRect.Width - CLOSE_BUTTON_SIZE - 8, tabRect.Height - 4);
+                TextFormatFlags flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter;
                 Color textColor = Color.Black;
-                TextRenderer.DrawText(e.Graphics, tabText, tabControl.Font, tabRect, textColor, flags);
+                TextRenderer.DrawText(e.Graphics, tabText, tabControl.Font, textRect, textColor, flags);
+
+                // Draw close button (X)
+                Rectangle closeRect = new Rectangle(tabRect.Right - CLOSE_BUTTON_SIZE - 4, tabRect.Y + (tabRect.Height - CLOSE_BUTTON_SIZE) / 2, CLOSE_BUTTON_SIZE, CLOSE_BUTTON_SIZE);
+                using (Pen pen = new Pen(Color.DarkGray, 2))
+                {
+                    // Draw circle background for X
+                    e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    using (SolidBrush closeBrush = new SolidBrush(isSelected ? Color.LightGray : Color.White))
+                    {
+                        e.Graphics.FillEllipse(closeBrush, closeRect);
+                    }
+                    // Draw X
+                    e.Graphics.DrawLine(pen, closeRect.Left + 4, closeRect.Top + 4, closeRect.Right - 4, closeRect.Bottom - 4);
+                    e.Graphics.DrawLine(pen, closeRect.Right - 4, closeRect.Top + 4, closeRect.Left + 4, closeRect.Bottom - 4);
+                }
+            }
+        }
+
+        // Handle mouse click to close tab when X is clicked (attach to tabControl)
+        private void TabControl_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (tabControl == null || tabControl.TabCount == 0) return;
+            for (int i = 0; i < tabControl.TabCount; i++)
+            {
+                var tabRect = tabControl.GetTabRect(i);
+                Rectangle closeRect = new Rectangle(tabRect.Right - CLOSE_BUTTON_SIZE - 4, tabRect.Y + (tabRect.Height - CLOSE_BUTTON_SIZE) / 2, CLOSE_BUTTON_SIZE, CLOSE_BUTTON_SIZE);
+                if (closeRect.Contains(e.Location))
+                {
+                    if (tabControl.TabCount > 1)
+                        tabControl.TabPages.RemoveAt(i);
+                    break;
+                }
             }
         }
 
@@ -84,15 +118,15 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
             mainLayout.Dock = DockStyle.Fill;
             mainLayout.RowCount = 3;
             mainLayout.ColumnCount = 1;
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F)); // Top bar (slightly larger)
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F)); // Address bar (slightly larger)
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56F)); // Top bar (taller for tabs)
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F)); // Address bar
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Browser content
 
 
             // Top bar: tabs and plus button (side by side), REC button separate
             var topBar = new TableLayoutPanel();
             topBar.Dock = DockStyle.Fill;
-            topBar.Height = 40;
+            topBar.Height = 56;
             topBar.ColumnCount = 2;
             topBar.RowCount = 1;
             topBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F)); // Tabs + plus
@@ -100,15 +134,17 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
 
             var tabsPanel = new FlowLayoutPanel();
             tabsPanel.Dock = DockStyle.Fill;
-            tabsPanel.Height = 40;
+            tabsPanel.Height = 65; // match topBar
+            tabsPanel.Margin = new Padding(0, 0, 0, 0);
             tabsPanel.FlowDirection = FlowDirection.LeftToRight;
             tabsPanel.WrapContents = false;
 
             tabControl = new TabControl
             {
                 Dock = DockStyle.Left,
-                Height = 40,
-                Width = 800
+                Height = 45, // slightly shorter than topBar for padding
+                Width = 1000, // more space for tabs
+                ItemSize = new Size(320, 35) // wide enough for ~20 characters
             };
             tabControl.SelectedIndexChanged += (s, e) => {
                 ShowActiveTabBrowser();
@@ -130,6 +166,7 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
                         tabControl.TabPages.Remove(tabControl.SelectedTab);
                 }
             };
+            tabControl.MouseDown += TabControl_MouseDown;
 
             var plusTabButton = new Button();
             plusTabButton.Text = "+";
@@ -275,8 +312,8 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
         private void AddNewTab(string initialUrl)
         {
             var tabPage = new TabPage();
-            // Add close button to tab header
-            tabPage.Text = "New Tab  ✕";
+            // Set a reasonable default tab text
+            tabPage.Text = "New Tab";
             tabPage.MouseDown += (sender, e) => {
                 // Detect click on close button area (rightmost 24px)
                 if (e.Button == MouseButtons.Left && e.X > tabPage.Width - 24)
@@ -380,7 +417,7 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
                                 // Remove quotes from result
                                 var pageTitle = System.Text.Json.JsonSerializer.Deserialize<string>(titleResult);
                                 if (!string.IsNullOrWhiteSpace(pageTitle))
-                                    tabPage.Text = pageTitle.Length > 40 ? pageTitle.Substring(0, 40) + "..." : pageTitle;
+                                    tabPage.Text = pageTitle;
                                 else
                                     tabPage.Text = "(Untitled)";
                             }
