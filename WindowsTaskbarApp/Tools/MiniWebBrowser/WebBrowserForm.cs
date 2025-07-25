@@ -60,30 +60,30 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
             mainLayout.Dock = DockStyle.Fill;
             mainLayout.RowCount = 3;
             mainLayout.ColumnCount = 1;
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F)); // Top bar
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F)); // Address bar
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F)); // Top bar (slightly larger)
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F)); // Address bar (slightly larger)
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Browser content
 
 
             // Top bar: tabs and plus button (side by side), REC button separate
             var topBar = new TableLayoutPanel();
             topBar.Dock = DockStyle.Fill;
-            topBar.Height = 36;
+            topBar.Height = 40;
             topBar.ColumnCount = 2;
             topBar.RowCount = 1;
             topBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F)); // Tabs + plus
-            topBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F)); // REC
+            topBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40F)); // REC
 
             var tabsPanel = new FlowLayoutPanel();
             tabsPanel.Dock = DockStyle.Fill;
-            tabsPanel.Height = 32;
+            tabsPanel.Height = 40;
             tabsPanel.FlowDirection = FlowDirection.LeftToRight;
             tabsPanel.WrapContents = false;
 
             tabControl = new TabControl
             {
                 Dock = DockStyle.Left,
-                Height = 32,
+                Height = 40,
                 Width = 800
             };
             tabControl.SelectedIndexChanged += (s, e) => {
@@ -109,7 +109,7 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
 
             var plusTabButton = new Button();
             plusTabButton.Text = "+";
-            plusTabButton.Font = new System.Drawing.Font("Arial", 14, System.Drawing.FontStyle.Bold);
+            plusTabButton.Font = new System.Drawing.Font("Arial", 12);
             plusTabButton.Size = new System.Drawing.Size(32, 32);
             plusTabButton.Cursor = Cursors.Hand;
             plusTabButton.FlatStyle = FlatStyle.Flat;
@@ -121,62 +121,30 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
             tabsPanel.Controls.Add(plusTabButton);
 
             // REC button logic
-            recButton = new ToolStripButton("● REC");
-            recButton.ForeColor = System.Drawing.Color.Gray;
-            recButton.Font = new System.Drawing.Font("Arial", 12, System.Drawing.FontStyle.Bold);
-            recButton.AutoSize = false;
-            recButton.Width = 80;
-            recButton.Height = 32;
-            recButton.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            recButton.Click += (sender, e) => {
-                recBlinkState = !recBlinkState;
-                isFileWriteActive = recBlinkState;
-                if (recBlinkState)
-                {
-                    recButton.ForeColor = System.Drawing.Color.Red;
-                    recBlinkTimer = new System.Windows.Forms.Timer();
-                    recBlinkTimer.Interval = 500;
-                    bool dotVisible = true;
-                    recBlinkTimer.Tick += (s2, e2) => {
-                        dotVisible = !dotVisible;
-                        recButton.Text = (dotVisible ? "● " : "  ") + "REC";
-                    };
-                    recBlinkTimer.Start();
-                    StartContentCapture();
-                }
-                else
-                {
-                    if (recBlinkTimer != null)
-                    {
-                        recBlinkTimer.Stop();
-                        recBlinkTimer.Dispose();
-                        recBlinkTimer = null;
-                    }
-                    recButton.ForeColor = System.Drawing.Color.Gray;
-                    recButton.Text = "● REC";
-                    StopContentCapture();
-                }
-            };
-
-            var recPanel = new Panel { Dock = DockStyle.Fill, Height = 32 };
-            var recToolStrip = new ToolStrip { Dock = DockStyle.Fill, GripStyle = ToolStripGripStyle.Hidden, BackColor = System.Drawing.Color.Transparent };
-            recToolStrip.Items.Add(recButton);
-            recPanel.Controls.Add(recToolStrip);
-
             topBar.Controls.Add(tabsPanel, 0, 0);
-            topBar.Controls.Add(recPanel, 1, 0);
 
             // Address bar
             var addressBarPanel = new TableLayoutPanel();
-            addressBarPanel.Dock = DockStyle.Fill;
+            addressBarPanel.Dock = DockStyle.Top;
             addressBarPanel.ColumnCount = 3;
             addressBarPanel.RowCount = 1;
+            addressBarPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F)); // Address bar height
             addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));
-            addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80F));
+            addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40F));
+            addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60F));
 
             addressTextBox = new TextBox { Dock = DockStyle.Fill, PlaceholderText = "Enter URL here..." };
-            var goButton = new Button { Text = "Go", Dock = DockStyle.Fill, Width = 60 };
+            addressTextBox.Font = new System.Drawing.Font("Roboto", 10, System.Drawing.FontStyle.Regular);
+            var goButton = new Button {
+                Text = "Go",
+                Dock = DockStyle.Fill,
+                Width = 40,
+                Height = 30,
+                MinimumSize = new System.Drawing.Size(40, 32),
+                Padding = new Padding(0),
+                Margin = new Padding(0, 1, 0, 1),
+                FlatStyle = FlatStyle.Standard
+            };
 
             // Go button click navigates active tab's WebView2
             goButton.Click += (sender, e) => {
@@ -225,10 +193,14 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
                 Text = "● REC",
                 Dock = DockStyle.Fill,
                 Width = 80,
-                Height = 32,
+                Height = 30,
+                MinimumSize = new System.Drawing.Size(60, 32),
+                Padding = new Padding(0),
+                Margin = new Padding(0, 1, 0, 1),
                 ForeColor = System.Drawing.Color.Gray,
-                Font = new System.Drawing.Font("Arial", 12, System.Drawing.FontStyle.Bold),
-                TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+                Font = new System.Drawing.Font("Arial", 10, System.Drawing.FontStyle.Bold),
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+                FlatStyle = FlatStyle.Standard
             };
             recBtn.Click += (sender, e) => {
                 recBlinkState = !recBlinkState;
@@ -307,7 +279,7 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
                 RowCount = 1,
                 Padding = new Padding(0),
                 AutoSize = true,
-                Height = 32
+                Height = 40
             };
             urlPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             urlPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));
@@ -407,25 +379,13 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
 
         private void ShowActiveTabBrowser()
         {
-            if (tabControl.SelectedTab != null && tabControl.SelectedTab.Controls.Count > 0)
+            if (tabControl.SelectedTab != null)
             {
-                var layout = tabControl.SelectedTab.Controls[0] as TableLayoutPanel;
-                if (layout != null)
+                var webView = tabControl.SelectedTab.Tag as WebView2;
+                if (webView != null)
                 {
-                    WebView2 webView = null;
-                    foreach (Control c in layout.Controls)
-                    {
-                        if (c is WebView2)
-                        {
-                            webView = (WebView2)c;
-                            break;
-                        }
-                    }
-                    if (webView != null)
-                    {
-                        browserContentPanel.Controls.Clear();
-                        browserContentPanel.Controls.Add(webView);
-                    }
+                    browserContentPanel.Controls.Clear();
+                    browserContentPanel.Controls.Add(webView);
                 }
             }
         }
