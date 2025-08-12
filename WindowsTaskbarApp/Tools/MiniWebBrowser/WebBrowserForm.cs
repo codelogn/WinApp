@@ -11,10 +11,12 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
 {
     public partial class WebBrowserForm : Form
     {
-        private Panel browserContentPanel;
-        private TabControl tabControl;
-        private ToolStrip browserToolStrip;
-        private TextBox addressTextBox;
+    private Panel browserContentPanel;
+    private TabControl tabControl;
+    private ToolStrip browserToolStrip;
+    private TextBox addressTextBox;
+    private Button backButton;
+    private Button forwardButton;
 
         private bool isFileWriteActive = false;
         private string lastDomContent = "";
@@ -42,10 +44,6 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
         {
             InitializeComponent();
             this.Load += WebBrowserForm_Load;
-
-            // Custom tab coloring
-            tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
-            tabControl.DrawItem += TabControl_DrawItem;
         }
         // Custom tab coloring logic with close button
         private const int CLOSE_BUTTON_SIZE = 16;
@@ -110,6 +108,9 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
 
         private void InitializeComponent()
         {
+            // Ensure browserContentPanel is initialized first
+            browserContentPanel = new Panel { Dock = DockStyle.Fill };
+
             this.Text = "Web Browser";
             this.Size = new System.Drawing.Size(1000, 700);
 
@@ -121,7 +122,6 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56F)); // Top bar (taller for tabs)
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F)); // Address bar
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Browser content
-
 
             // Top bar: tabs and plus button (side by side), REC button separate
             var topBar = new TableLayoutPanel();
@@ -146,6 +146,9 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
                 Width = 1000, // more space for tabs
                 ItemSize = new Size(320, 35) // wide enough for ~20 characters
             };
+            // Custom tab coloring
+            tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
+            tabControl.DrawItem += TabControl_DrawItem;
             tabControl.SelectedIndexChanged += (s, e) => {
                 ShowActiveTabBrowser();
                 // Sync address bar with active tab's URL
@@ -184,16 +187,40 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
             // REC button logic
             topBar.Controls.Add(tabsPanel, 0, 0);
 
-            // Address bar
+            // Address bar with Back/Forward buttons
             var addressBarPanel = new TableLayoutPanel();
             addressBarPanel.Dock = DockStyle.Top;
-            addressBarPanel.ColumnCount = 3;
+            addressBarPanel.ColumnCount = 5;
             addressBarPanel.RowCount = 1;
             addressBarPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F)); // Address bar height
-            addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40F));
-            addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60F));
+            addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40F)); // Back
+            addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40F)); // Forward
+            addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F)); // Address
+            addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40F)); // Go
+            addressBarPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60F)); // REC
 
+            backButton = new Button {
+                Text = "←",
+                Dock = DockStyle.Fill,
+                Width = 40,
+                Height = 30,
+                MinimumSize = new System.Drawing.Size(40, 32),
+                Padding = new Padding(0),
+                Margin = new Padding(0, 1, 0, 1),
+                FlatStyle = FlatStyle.Standard,
+                Enabled = false
+            };
+            forwardButton = new Button {
+                Text = "→",
+                Dock = DockStyle.Fill,
+                Width = 40,
+                Height = 30,
+                MinimumSize = new System.Drawing.Size(40, 32),
+                Padding = new Padding(0),
+                Margin = new Padding(0, 1, 0, 1),
+                FlatStyle = FlatStyle.Standard,
+                Enabled = false
+            };
             addressTextBox = new TextBox { Dock = DockStyle.Fill, PlaceholderText = "Enter URL here..." };
             addressTextBox.Font = new System.Drawing.Font("Roboto", 10, System.Drawing.FontStyle.Regular);
             var goButton = new Button {
@@ -293,150 +320,194 @@ namespace WindowsTaskbarApp.Tools.MiniWebBrowser
                     StopContentCapture();
                 }
             };
-            addressBarPanel.Controls.Add(addressTextBox, 0, 0);
-            addressBarPanel.Controls.Add(goButton, 1, 0);
-            addressBarPanel.Controls.Add(recBtn, 2, 0);
+            addressBarPanel.Controls.Add(backButton, 0, 0);
+            addressBarPanel.Controls.Add(forwardButton, 1, 0);
+            addressBarPanel.Controls.Add(addressTextBox, 2, 0);
+            addressBarPanel.Controls.Add(goButton, 3, 0);
+            addressBarPanel.Controls.Add(recBtn, 4, 0);
 
-            // Browser content panel
-            browserContentPanel = new Panel { Dock = DockStyle.Fill };
+            tabControl.SelectedIndexChanged += (s, e) => UpdateNavButtons();
+            backButton.Click += (sender, e) => {
+                if (tabControl.SelectedTab != null)
+                {
+                    var webView = tabControl.SelectedTab.Tag as WebView2;
+                    if (webView != null && webView.CanGoBack)
+                        webView.GoBack();
+                }
+            };
+            forwardButton.Click += (sender, e) => {
+                if (tabControl.SelectedTab != null)
+                {
+                    var webView = tabControl.SelectedTab.Tag as WebView2;
+                    if (webView != null && webView.CanGoForward)
+                        webView.GoForward();
+                }
+            };
 
-            // Add to main layout
+            // Add panels to main layout and add main layout to the form
             mainLayout.Controls.Add(topBar, 0, 0);
             mainLayout.Controls.Add(addressBarPanel, 0, 1);
             mainLayout.Controls.Add(browserContentPanel, 0, 2);
-
             this.Controls.Clear();
             this.Controls.Add(mainLayout);
         }
 
-        private void AddNewTab(string initialUrl)
+
+    // Navigation button logic
+    private void UpdateNavButtons()
+    {
+        if (tabControl != null && tabControl.SelectedTab != null)
         {
-            var tabPage = new TabPage();
-            // Set a reasonable default tab text
-            tabPage.Text = "New Tab";
-            tabPage.MouseDown += (sender, e) => {
-                // Detect click on close button area (rightmost 24px)
-                if (e.Button == MouseButtons.Left && e.X > tabPage.Width - 24)
-                {
-                    if (tabControl.TabPages.Count > 1)
-                        tabControl.TabPages.Remove(tabPage);
-                }
-            };
-            var layout = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 1,
-                RowCount = 2,
-                Padding = new Padding(0),
-                AutoSize = true
-            };
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
-            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            var webView = tabControl.SelectedTab.Tag as WebView2;
+            backButton.Enabled = webView != null && webView.CanGoBack;
+            forwardButton.Enabled = webView != null && webView.CanGoForward;
+        }
+        else
+        {
+            backButton.Enabled = false;
+            forwardButton.Enabled = false;
+        }
+    }
 
-            var urlPanel = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                ColumnCount = 2,
-                RowCount = 1,
-                Padding = new Padding(0),
-                AutoSize = true,
-                Height = 40
-            };
-            urlPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            urlPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));
+    // Update nav buttons on navigation events for each new tab
+    private void AttachNavEvents(WebView2 webView)
+    {
+        webView.NavigationCompleted += (s, e) => UpdateNavButtons();
+        webView.CoreWebView2InitializationCompleted += (s, e) => UpdateNavButtons();
+    }
 
-            var urlTextBox = new TextBox
+    private void AddNewTab(string initialUrl)
+    {
+        var tabPage = new TabPage();
+        // Set a reasonable default tab text
+        tabPage.Text = "New Tab";
+        tabPage.MouseDown += (sender, e) => {
+            // Detect click on close button area (rightmost 24px)
+            if (e.Button == MouseButtons.Left && e.X > tabPage.Width - 24)
             {
-                Dock = DockStyle.Fill,
-                PlaceholderText = "Enter URL here..."
-            };
-            var loadButton = new Button
-            {
-                Text = "Load",
-                Dock = DockStyle.Fill,
-                Width = 60
-            };
-            var webView = new WebView2
-            {
-                Dock = DockStyle.Fill
-            };
+                if (tabControl.TabPages.Count > 1)
+                    tabControl.TabPages.Remove(tabPage);
+            }
+        };
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2,
+            Padding = new Padding(0),
+            AutoSize = true
+        };
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-            tabPage.Tag = webView; // Store reference to WebView2 in tab's Tag
-            // Sync address bar with navigation in this tab
-            webView.NavigationStarting += (s, e) => {
-                addressTextBox.Invoke((MethodInvoker)(() => addressTextBox.Text = e.Uri));
-            };
-            webView.NavigationCompleted += (s, e) => {
-                addressTextBox.Invoke((MethodInvoker)(() => addressTextBox.Text = webView.Source?.ToString() ?? ""));
-            };
+        var urlPanel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            ColumnCount = 2,
+            RowCount = 1,
+            Padding = new Padding(0),
+            AutoSize = true,
+            Height = 40
+        };
+        urlPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        urlPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));
 
-            urlTextBox.Text = initialUrl;
-            urlTextBox.KeyDown += (sender, e) =>
+        var urlTextBox = new TextBox
+        {
+            Dock = DockStyle.Fill,
+            PlaceholderText = "Enter URL here..."
+        };
+        var loadButton = new Button
+        {
+            Text = "Load",
+            Dock = DockStyle.Fill,
+            Width = 60
+        };
+        var webView = new WebView2
+        {
+            Dock = DockStyle.Fill
+        };
+
+        tabPage.Tag = webView; // Store reference to WebView2 in tab's Tag
+        // Sync address bar with navigation in this tab
+        webView.NavigationStarting += (s, e) => {
+            addressTextBox.Invoke((MethodInvoker)(() => addressTextBox.Text = e.Uri));
+        };
+        webView.NavigationCompleted += (s, e) => {
+            addressTextBox.Invoke((MethodInvoker)(() => addressTextBox.Text = webView.Source?.ToString() ?? ""));
+        };
+        // Attach navigation events for enabling/disabling nav buttons
+        AttachNavEvents(webView);
+        // Update nav buttons after adding a new tab
+        UpdateNavButtons();
+
+        urlTextBox.Text = initialUrl;
+        urlTextBox.KeyDown += (sender, e) =>
+        {
+            if (e.KeyCode == Keys.Enter)
             {
-                if (e.KeyCode == Keys.Enter)
-                {
-                    lastWrittenDomContent = ""; // Reset so new content is written
-                    LoadTabUrl(webView, urlTextBox);
-                    e.Handled = true;
-                    e.SuppressKeyPress = true;
-                }
-            };
-            loadButton.Click += (sender, e) => {
                 lastWrittenDomContent = ""; // Reset so new content is written
                 LoadTabUrl(webView, urlTextBox);
-            };
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+        };
+        loadButton.Click += (sender, e) => {
+            lastWrittenDomContent = ""; // Reset so new content is written
+            LoadTabUrl(webView, urlTextBox);
+        };
 
-            urlPanel.Controls.Add(urlTextBox, 0, 0);
-            urlPanel.Controls.Add(loadButton, 1, 0);
+        urlPanel.Controls.Add(urlTextBox, 0, 0);
+        urlPanel.Controls.Add(loadButton, 1, 0);
 
-            layout.Controls.Add(urlPanel, 0, 0);
-            // Do NOT add webView to tab layout
+        layout.Controls.Add(urlPanel, 0, 0);
+        // Do NOT add webView to tab layout
 
-            tabPage.Controls.Add(layout);
-            tabControl.TabPages.Add(tabPage);
-            tabControl.SelectedTab = tabPage;
+        tabPage.Controls.Add(layout);
+        tabControl.TabPages.Add(tabPage);
+        tabControl.SelectedTab = tabPage;
 
-            // Always show the new tab's WebView2 in browserContentPanel
-            browserContentPanel.Controls.Clear();
-            browserContentPanel.Controls.Add(webView);
+        // Always show the new tab's WebView2 in browserContentPanel
+        browserContentPanel.Controls.Clear();
+        browserContentPanel.Controls.Add(webView);
 
-            webView.CoreWebView2InitializationCompleted += async (s, e) =>
+        webView.CoreWebView2InitializationCompleted += async (s, e) =>
+        {
+            if (e.IsSuccess)
             {
-                if (e.IsSuccess)
+                webView.CoreWebView2.Navigate(initialUrl);
+                // Update tab title after navigation
+                webView.CoreWebView2.NavigationCompleted += async (s2, e2) =>
                 {
-                    webView.CoreWebView2.Navigate(initialUrl);
-                    // Update tab title after navigation
-                    webView.CoreWebView2.NavigationCompleted += async (s2, e2) =>
+                    try
                     {
-                        try
+                        string jsTitle = "document.title";
+                        var titleResult = await webView.CoreWebView2.ExecuteScriptAsync(jsTitle);
+                        if (!string.IsNullOrWhiteSpace(titleResult))
                         {
-                            string jsTitle = "document.title";
-                            var titleResult = await webView.CoreWebView2.ExecuteScriptAsync(jsTitle);
-                            if (!string.IsNullOrWhiteSpace(titleResult))
-                            {
-                                // Remove quotes from result
-                                var pageTitle = System.Text.Json.JsonSerializer.Deserialize<string>(titleResult);
-                                if (!string.IsNullOrWhiteSpace(pageTitle))
-                                    tabPage.Text = pageTitle;
-                                else
-                                    tabPage.Text = "(Untitled)";
-                            }
+                            // Remove quotes from result
+                            var pageTitle = System.Text.Json.JsonSerializer.Deserialize<string>(titleResult);
+                            if (!string.IsNullOrWhiteSpace(pageTitle))
+                                tabPage.Text = pageTitle;
                             else
-                            {
                                 tabPage.Text = "(Untitled)";
-                            }
                         }
-                        catch
+                        else
                         {
                             tabPage.Text = "(Untitled)";
                         }
-                    };
-                }
-            };
-            webView.EnsureCoreWebView2Async();
+                    }
+                    catch
+                    {
+                        tabPage.Text = "(Untitled)";
+                    }
+                };
+            }
+        };
+        webView.EnsureCoreWebView2Async();
 
-            ShowActiveTabBrowser();
-        }
+        ShowActiveTabBrowser();
+    }
 
         private void ShowActiveTabBrowser()
         {
